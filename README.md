@@ -2,6 +2,8 @@
 
 # 🎴 Proxymon
 
+
+
 ### Pokémon TCG Proxy Card Generator
 
 [![Next.js](https://img.shields.io/badge/Next.js-16.1.6-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
@@ -9,15 +11,16 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9.3-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
 [![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 
-**Professional-quality proxy cards for Pokémon TCG playtesting and deck building**
+**Simplify proxy card printing for Pokémon TCG playtesting, deck building, and collecting**
 
 </div>
 
+<img width="1521" height="934" alt="image" src="https://github.com/user-attachments/assets/8cd74fc5-6904-4412-af1c-bc9ad8987730" />
 ---
 
 ## 📖 Project Overview
 
-Proxymon is a powerful web application designed for generating print-ready proxy cards for the Pokémon Trading Card Game. Whether you're a competitive player, deck builder, or casual enthusiast, Proxymon provides everything you need to create professional-quality proxies without the cost of expensive cards.
+Proxymon is a powerful web application designed for easily generating print-ready proxy cards for the Pokémon Trading Card Game. Whether you're a competitive player, deck builder, or casual enthusiast, Proxymon provides everything you need to create professional-quality proxies without the cost of expensive cards.
 
 The application integrates with the comprehensive TCGdex database, offering real-time card search, smart deck list importing, advanced image processing, and customizable PDF generation with proper bleed areas and cut lines.
 
@@ -49,8 +52,13 @@ The application integrates with the comprehensive TCGdex database, offering real
 ### 🏆 Limitless TCG Integration
 
 - **Meta Deck Browser**: Browse top 50 tournament decks from Limitless TCG
+<img width="313" height="493" alt="image" src="https://github.com/user-attachments/assets/8e4ce9ab-112f-4a7a-8704-209f825999f0" />
+
+
 - **Pokemon Sprites**: Visual Pokemon icons for easy deck identification
 - **Import by URL**: Paste any Limitless TCG deck URL to load cards
+<img width="301" height="585" alt="image" src="https://github.com/user-attachments/assets/ccfa9be8-ad2f-4ced-8f66-6362b5fab88b" />
+
 - **Variant Support**: Import specific deck variants (e.g., `?variant=5`)
 - **Source-to-Editor Workflow**: Review and edit imported decks before adding to proxy list
 - **Load Confirmation**: Choose to replace existing cards or add to current list
@@ -59,15 +67,22 @@ The application integrates with the comprehensive TCGdex database, offering real
 ### 👁️ Live Preview
 
 - **Drag-and-Drop Reordering**: Intuitive card arrangement with smooth animations
+<img width="551" height="360" alt="image" src="https://github.com/user-attachments/assets/1897bf2f-66eb-4cee-8e5d-f458a8b4f0a2" />
+
 - **Individual Card Movement**: Move single cards independently (not grouped by type)
 - **Zoom Controls**: Flexible zoom levels from 50% to 200%
 - **Multi-Page Support**: Preview across multiple pages as needed
-- **Cut Line Overlay**: Visual guide showing where cards will be cut
+- **Cut Line Overlay**: Visual guide showing where cards will be cut (can be disabled)
+- <img width="101" height="87" alt="image" src="https://github.com/user-attachments/assets/b5e1a837-835c-4d46-b2f3-0e974f821c2f" />
 - **Bleed Visualization**: See exactly how bleed areas extend beyond trim size
+<img width="1325" height="738" alt="image" src="https://github.com/user-attachments/assets/cabb35ba-829a-4206-b9f4-ddb49294af5d" />
+
 - **Click-to-Change-Variant**: Click any card in preview to quickly change its variant
 - **Real-time Updates**: All changes reflected instantly in the preview
 
 ### 🎨 Card Variant Selection
+
+<img width="789" height="539" alt="image" src="https://github.com/user-attachments/assets/8aa938d6-ff03-4fba-a92f-213f89f2c8cf" />
 
 - **Complete Variant Browser**: View all card variants across different sets
 - **Load-More Pagination**: Efficiently browse through hundreds of variants
