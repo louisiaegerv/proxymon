@@ -20,9 +20,9 @@
 
 ## 📖 Project Overview
 
-Proxymon is a powerful web application designed for easily generating print-ready proxy cards for the Pokémon Trading Card Game. Whether you're a competitive player, deck builder, or casual enthusiast, Proxymon provides everything you need to create professional-quality proxies without the cost of expensive cards.
+Proxymon is a powerful web application designed for easily generating print-ready proxy card PDFs for the Pokémon Trading Card Game. Whether you're a competitive player, deck builder, or casual enthusiast, Proxymon provides everything you need to create professional-quality proxies without the cost of expensive cards.
 
-The application integrates with the comprehensive TCGdex database, offering real-time card search, smart deck list importing, advanced image processing, and customizable PDF generation with proper bleed areas and cut lines.
+The application integrates with the comprehensive TCGdex database, offering real-time card search, smart deck list importing from Limitless TCG, advanced image processing, and customizable PDF generation with proper bleed areas and cut lines.
 
 ---
 
