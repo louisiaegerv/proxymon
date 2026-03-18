@@ -6,10 +6,21 @@ import { getFullImageUrl } from "@/lib/tcgdex"
 import { PAGE_DIMENSIONS, BleedMethod } from "@/types"
 import { generateProxyPDF, downloadPDF } from "@/lib/pdf"
 import { Button } from "@/components/ui/button"
-import { Printer, Loader2, ZoomIn, ZoomOut, RotateCcw, CheckSquare, X } from "lucide-react"
+import {
+  Printer,
+  Loader2,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  CheckSquare,
+  X,
+} from "lucide-react"
 import { CardVariantModal } from "./card-variant-modal"
 import { BulkSelectionToolbar } from "./bulk-selection-toolbar"
-import { DeleteConfirmDialog, shouldSkipDeleteConfirm } from "./delete-confirm-dialog"
+import {
+  DeleteConfirmDialog,
+  shouldSkipDeleteConfirm,
+} from "./delete-confirm-dialog"
 import { cn } from "@/lib/utils"
 import { CardWithBleed } from "@/components/card-with-bleed"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -49,15 +60,18 @@ interface DisplayCard {
 }
 
 interface LivePreviewProps {
-  hideHeader?: boolean;
-  containerWidth?: number; // When provided, scales to fit this width
+  hideHeader?: boolean
+  containerWidth?: number // When provided, scales to fit this width
 }
 
-export function LivePreview({ hideHeader = false, containerWidth }: LivePreviewProps) {
-  const { 
-    items, 
-    getTotalCards, 
-    settings, 
+export function LivePreview({
+  hideHeader = false,
+  containerWidth,
+}: LivePreviewProps) {
+  const {
+    items,
+    getTotalCards,
+    settings,
     reorderItems,
     selectedIds,
     isBulkMode,
@@ -76,7 +90,9 @@ export function LivePreview({ hideHeader = false, containerWidth }: LivePreviewP
   const [activeId, setActiveId] = useState<string | null>(null)
   const [overId, setOverId] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [localLastSelectedId, setLocalLastSelectedId] = useState<string | null>(null)
+  const [localLastSelectedId, setLocalLastSelectedId] = useState<string | null>(
+    null
+  )
 
   const totalCards = getTotalCards()
   const selectedCount = selectedIds.size
@@ -120,7 +136,7 @@ export function LivePreview({ hideHeader = false, containerWidth }: LivePreviewP
 
     // Calculate base scale (0.8 for desktop)
     let baseScale = 0.8
-    
+
     // If containerWidth is provided, calculate scale to fit
     if (containerWidth && containerWidth > 0) {
       const pageWidthPx = pageDims.width * MM_TO_PX
@@ -128,7 +144,7 @@ export function LivePreview({ hideHeader = false, containerWidth }: LivePreviewP
       const fitScale = (containerWidth - 32) / pageWidthPx
       baseScale = Math.min(0.8, Math.max(0.3, fitScale))
     }
-    
+
     const finalScale = baseScale * zoom
 
     return {
@@ -184,7 +200,7 @@ export function LivePreview({ hideHeader = false, containerWidth }: LivePreviewP
 
   const handleDeleteSelected = useCallback(() => {
     if (selectedCount === 0) return
-    
+
     if (shouldSkipDeleteConfirm()) {
       removeItems(Array.from(selectedIds))
     } else {
@@ -202,7 +218,11 @@ export function LivePreview({ hideHeader = false, containerWidth }: LivePreviewP
         }
       }
       // Delete - delete selected cards (only when in bulk mode and cards are selected)
-      if ((e.key === "Delete" || e.key === "Backspace") && selectedCount > 0 && isBulkMode) {
+      if (
+        (e.key === "Delete" || e.key === "Backspace") &&
+        selectedCount > 0 &&
+        isBulkMode
+      ) {
         e.preventDefault()
         handleDeleteSelected()
       }
@@ -210,7 +230,13 @@ export function LivePreview({ hideHeader = false, containerWidth }: LivePreviewP
 
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [isBulkMode, selectedCount, selectedIds, clearSelection, handleDeleteSelected])
+  }, [
+    isBulkMode,
+    selectedCount,
+    selectedIds,
+    clearSelection,
+    handleDeleteSelected,
+  ])
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string)
@@ -246,7 +272,7 @@ export function LivePreview({ hideHeader = false, containerWidth }: LivePreviewP
     if (isBulkMode || event.shiftKey) {
       event.preventDefault()
       event.stopPropagation()
-      
+
       if (event.shiftKey && localLastSelectedId) {
         // Range selection
         selectRange(localLastSelectedId, card.id)
@@ -328,8 +354,12 @@ export function LivePreview({ hideHeader = false, containerWidth }: LivePreviewP
               Print Preview
             </h2>
             <p className="text-sm text-slate-500">
-              {totalCards} cards · {selectedCount > 0 ? `${selectedCount} selected · ` : ""}
-              {Math.ceil(displayCards.length / preview.cardsPerPage)} page{Math.ceil(displayCards.length / preview.cardsPerPage) !== 1 ? "s" : ""}
+              {totalCards} cards ·{" "}
+              {selectedCount > 0 ? `${selectedCount} selected · ` : ""}
+              {Math.ceil(displayCards.length / preview.cardsPerPage)} page
+              {Math.ceil(displayCards.length / preview.cardsPerPage) !== 1
+                ? "s"
+                : ""}
             </p>
           </div>
 
@@ -340,18 +370,18 @@ export function LivePreview({ hideHeader = false, containerWidth }: LivePreviewP
               size="sm"
               onClick={toggleBulkMode}
               className={cn(
-                "h-8 px-3 gap-2",
+                "h-8 gap-2 px-3",
                 isBulkMode && "bg-blue-600 text-white hover:bg-blue-700"
               )}
             >
               {isBulkMode ? (
                 <>
-                  <X className="w-4 h-4" />
+                  <X className="h-4 w-4" />
                   Exit Selection
                 </>
               ) : (
                 <>
-                  <CheckSquare className="w-4 h-4" />
+                  <CheckSquare className="h-4 w-4" />
                   Select
                 </>
               )}
@@ -399,22 +429,26 @@ export function LivePreview({ hideHeader = false, containerWidth }: LivePreviewP
         onDragMove={handleDragMove}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex-1 space-y-8 overflow-auto pb-8 px-4">
-          {Array.from({ length: Math.ceil(displayCards.length / preview.cardsPerPage) }).map((_, pageIndex) => {
+        <div className="flex-1 space-y-8 px-4 pb-8">
+          {Array.from({
+            length: Math.ceil(displayCards.length / preview.cardsPerPage),
+          }).map((_, pageIndex) => {
             const pageCards = displayCards.slice(
               pageIndex * preview.cardsPerPage,
               (pageIndex + 1) * preview.cardsPerPage
             )
-            const totalPages = Math.ceil(displayCards.length / preview.cardsPerPage)
+            const totalPages = Math.ceil(
+              displayCards.length / preview.cardsPerPage
+            )
 
             return (
-              <div key={pageIndex} className="flex flex-col items-start">
-                <div className="mb-2 text-xs text-slate-500">
+              <div key={pageIndex} className="flex flex-col items-center">
+                <div className="mb-2 text-3xl text-slate-500 md:text-xs">
                   Page {pageIndex + 1} of {totalPages}
                 </div>
 
                 <div
-                  className="card-grid relative bg-white shadow-2xl"
+                  className="card-grid preview-paper relative bg-white shadow-2xl"
                   style={{
                     width: preview.width,
                     height: preview.height,
@@ -578,8 +612,9 @@ export function LivePreview({ hideHeader = false, containerWidth }: LivePreviewP
           </div>
         )}
         {isBulkMode && (
-          <div className="text-blue-400 mt-1">
-            Click cards to select · Shift+click for range selection · Press Delete to remove selected
+          <div className="mt-1 text-blue-400">
+            Click cards to select · Shift+click for range selection · Press
+            Delete to remove selected
           </div>
         )}
       </div>
@@ -673,8 +708,10 @@ function DraggableCard({
       ref={setDroppableRef}
       className={cn(
         "absolute transition-all duration-200",
-        isOver && !isBulkMode && "z-40 scale-105 ring-2 ring-green-400 ring-offset-2",
-        isSelected && "ring-2 ring-blue-500 ring-offset-2 z-30"
+        isOver &&
+          !isBulkMode &&
+          "z-40 scale-105 ring-2 ring-green-400 ring-offset-2",
+        isSelected && "z-30 ring-2 ring-blue-500 ring-offset-2"
       )}
       style={{
         left: card.imageX,
@@ -700,7 +737,7 @@ function DraggableCard({
 
       {/* Selection checkbox overlay */}
       {isBulkMode && (
-        <div 
+        <div
           className="absolute top-2 left-2 z-50"
           onClick={(e) => e.stopPropagation()}
         >
@@ -708,10 +745,10 @@ function DraggableCard({
             checked={isSelected}
             onCheckedChange={onSelectChange}
             className={cn(
-              "w-5 h-5 border-2 shadow-lg",
-              isSelected 
-                ? "bg-blue-600 border-blue-600 data-[state=checked]:bg-blue-600" 
-                : "bg-white/90 border-slate-400 hover:bg-white"
+              "h-5 w-5 border-2 shadow-lg",
+              isSelected
+                ? "border-blue-600 bg-blue-600 data-[state=checked]:bg-blue-600"
+                : "border-slate-400 bg-white/90 hover:bg-white"
             )}
           />
         </div>
@@ -720,9 +757,19 @@ function DraggableCard({
       {/* Selected indicator (subtle when not in bulk mode) */}
       {isSelected && !isBulkMode && (
         <div className="absolute top-2 left-2 z-40">
-          <div className="w-4 h-4 rounded-sm bg-blue-600 shadow-lg flex items-center justify-center">
-            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+          <div className="flex h-4 w-4 items-center justify-center rounded-sm bg-blue-600 shadow-lg">
+            <svg
+              className="h-3 w-3 text-white"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={3}
+                d="M5 13l4 4L19 7"
+              />
             </svg>
           </div>
         </div>
