@@ -6,15 +6,7 @@ import { getFullImageUrl } from "@/lib/tcgdex"
 import { PAGE_DIMENSIONS, BleedMethod } from "@/types"
 import { generateProxyPDF, downloadPDF } from "@/lib/pdf"
 import { Button } from "@/components/ui/button"
-import {
-  Printer,
-  Loader2,
-  ZoomIn,
-  ZoomOut,
-  RotateCcw,
-  CheckSquare,
-  X,
-} from "lucide-react"
+import { ZoomIn, ZoomOut, RotateCcw, CheckSquare, X } from "lucide-react"
 import { CardVariantModal } from "./card-variant-modal"
 import { BulkSelectionToolbar } from "./bulk-selection-toolbar"
 import {
@@ -498,7 +490,10 @@ export function LivePreview({
                   {/* Cut lines */}
                   {settings.showCutLines && (
                     <svg
-                      className="pointer-events-none absolute inset-0 z-10"
+                      className={cn(
+                        "pointer-events-none absolute inset-0",
+                        settings.cutLinePosition === "front" ? "z-50" : "z-0"
+                      )}
                       width={preview.width}
                       height={preview.height}
                     >
@@ -521,42 +516,69 @@ export function LivePreview({
                           ? `rgb(${settings.cutLineColor.r}, ${settings.cutLineColor.g}, ${settings.cutLineColor.b})`
                           : "#10b981"
 
+                        const lineLength = settings.cutLineLength ?? 8
+                        const lineWidth = settings.cutLineWidth ?? 1.5
+
                         return (
                           <g key={`card-cuts-${row}-${col}`}>
                             <line
-                              x1={cardX - 4}
+                              className="top-line"
+                              x1={cardX - preview.bleed - lineLength}
                               y1={cardY}
-                              x2={cardX + preview.cardWidth + 4}
+                              x2={
+                                cardX +
+                                preview.cardWidth +
+                                preview.bleed +
+                                lineLength
+                              }
                               y2={cardY}
                               stroke={cutColor}
-                              strokeWidth={1.5}
+                              strokeWidth={lineWidth}
                               strokeDasharray="4 2"
                             />
                             <line
-                              x1={cardX - 4}
+                              className="bottom-line"
+                              x1={cardX - preview.bleed - lineLength}
                               y1={cardY + preview.cardHeight}
-                              x2={cardX + preview.cardWidth + 4}
+                              x2={
+                                cardX +
+                                preview.cardWidth +
+                                preview.bleed +
+                                lineLength
+                              }
                               y2={cardY + preview.cardHeight}
                               stroke={cutColor}
-                              strokeWidth={1.5}
+                              strokeWidth={lineWidth}
                               strokeDasharray="4 2"
                             />
                             <line
+                              className="left-line"
                               x1={cardX}
-                              y1={cardY - 4}
+                              y1={cardY - preview.bleed - lineLength}
                               x2={cardX}
-                              y2={cardY + preview.cardHeight + 4}
+                              y2={
+                                cardY +
+                                preview.cardHeight +
+                                preview.bleed +
+                                lineLength
+                              }
                               stroke={cutColor}
-                              strokeWidth={1.5}
+                              strokeWidth={lineWidth}
                               strokeDasharray="4 2"
                             />
                             <line
+                              className="right-line"
                               x1={cardX + preview.cardWidth}
-                              y1={cardY - 4}
+                              y1={cardY - preview.bleed - lineLength}
                               x2={cardX + preview.cardWidth}
-                              y2={cardY + preview.cardHeight + 4}
+                              y2={
+                                cardY +
+                                preview.cardHeight +
+                                preview.bleed +
+                                lineLength
+                              }
                               stroke={cutColor}
-                              strokeWidth={1.5}
+                              strokeWidth={lineWidth}
                               strokeDasharray="4 2"
                             />
                           </g>
@@ -707,7 +729,7 @@ function DraggableCard({
     <div
       ref={setDroppableRef}
       className={cn(
-        "absolute transition-all duration-200",
+        "absolute z-10 transition-all duration-200",
         isOver &&
           !isBulkMode &&
           "z-40 scale-105 ring-2 ring-green-400 ring-offset-2",

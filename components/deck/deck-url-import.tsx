@@ -79,7 +79,9 @@ export function DeckUrlImport({ onPopulateText }: DeckUrlImportProps) {
     type: "error" | "success" | "info" | null
     message: string
   }>({ type: null, message: "" })
-  const [recentUrls, setRecentUrls] = useState<RecentUrl[]>([])
+  const [recentUrls, setRecentUrls] = useState<RecentUrl[]>(() =>
+    getRecentUrls()
+  )
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [pendingDeckData, setPendingDeckData] = useState<{
     text: string
@@ -92,11 +94,6 @@ export function DeckUrlImport({ onPopulateText }: DeckUrlImportProps) {
     (sum, item) => sum + item.quantity,
     0
   )
-
-  // Load recent URLs on mount
-  useEffect(() => {
-    setRecentUrls(getRecentUrls())
-  }, [])
 
   const processImport = async (
     deckId: number,

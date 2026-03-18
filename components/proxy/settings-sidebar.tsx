@@ -49,7 +49,7 @@ const ALL_SECTIONS = [
   "profiles",
 ]
 
-export function ProxySidebar() {
+export function SettingsSidebar() {
   const { settings, updateSettings, items, getTotalCards } = useProxyList()
   const [isGenerating, setIsGenerating] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -85,27 +85,27 @@ export function ProxySidebar() {
 
   const handleCopyCardList = async () => {
     if (items.length === 0) return
-    
+
     // Helper to extract setId from image URL if item.setId is empty
     // URL format: https://assets.tcgdex.net/en/{series}/{set}/{localId}
-    const getSetId = (item: typeof items[0]): string => {
+    const getSetId = (item: (typeof items)[0]): string => {
       if (item.setId) return item.setId
-      
+
       // Try to extract from originalImage or image URL
       const imageUrl = item.originalImage || item.image
       if (imageUrl) {
         const match = imageUrl.match(/\/en\/[^/]+\/([^/]+)\//)
         if (match) return match[1]
       }
-      
+
       return ""
     }
-    
+
     // Helper to get a unique key for a card (for comparison)
-    const getCardKey = (item: typeof items[0]): string => {
+    const getCardKey = (item: (typeof items)[0]): string => {
       return `${item.name}|${getSetId(item)}|${item.localId}`
     }
-    
+
     // Merge adjacent identical cards
     const mergedLines: string[] = []
     let currentKey: string | null = null
@@ -113,17 +113,19 @@ export function ProxySidebar() {
     let currentName = ""
     let currentSetId = ""
     let currentLocalId = ""
-    
+
     for (const item of items) {
       const key = getCardKey(item)
-      
+
       if (key === currentKey) {
         // Same card as previous, accumulate quantity
         currentQuantity += item.quantity
       } else {
         // Different card, output previous if exists
         if (currentKey !== null) {
-          mergedLines.push(`${currentQuantity} ${currentName} ${currentSetId} ${currentLocalId}`)
+          mergedLines.push(
+            `${currentQuantity} ${currentName} ${currentSetId} ${currentLocalId}`
+          )
         }
         // Start new group
         currentKey = key
@@ -133,14 +135,16 @@ export function ProxySidebar() {
         currentLocalId = item.localId
       }
     }
-    
+
     // Output the last group
     if (currentKey !== null) {
-      mergedLines.push(`${currentQuantity} ${currentName} ${currentSetId} ${currentLocalId}`)
+      mergedLines.push(
+        `${currentQuantity} ${currentName} ${currentSetId} ${currentLocalId}`
+      )
     }
-    
+
     const cardList = mergedLines.join("\n")
-    
+
     try {
       await navigator.clipboard.writeText(cardList)
       setCopied(true)
@@ -428,6 +432,75 @@ export function ProxySidebar() {
                         : "Default (Emerald)"}
                     </span>
                   </div>
+
+                  {/* Cut Line Width */}
+                  <div className="space-y-2 pt-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-400">Line width</span>
+                      <span className="text-slate-500">
+                        {settings.cutLineWidth ?? 1.5}px
+                      </span>
+                    </div>
+                    <Slider
+                      value={[settings.cutLineWidth ?? 1.5]}
+                      onValueChange={([value]) =>
+                        updateSettings({ cutLineWidth: value })
+                      }
+                      min={0.5}
+                      max={3}
+                      step={0.5}
+                    />
+                  </div>
+
+                  {/* Cut Line Length */}
+                  <div className="space-y-2 pt-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-400">Line length</span>
+                      <span className="text-slate-500">
+                        {settings.cutLineLength ?? 8}mm
+                      </span>
+                    </div>
+                    <Slider
+                      value={[settings.cutLineLength ?? 8]}
+                      onValueChange={([value]) =>
+                        updateSettings({ cutLineLength: value })
+                      }
+                      min={0}
+                      max={15}
+                      step={1}
+                    />
+                  </div>
+
+                  {/* Cut Line Position */}
+                  <div className="space-y-2 pt-2">
+                    <Label className="text-xs text-slate-400">
+                      Line position
+                    </Label>
+                    <Select
+                      value={settings.cutLinePosition ?? "behind"}
+                      onValueChange={(value: "front" | "behind") =>
+                        updateSettings({ cutLinePosition: value })
+                      }
+                    >
+                      <SelectTrigger className="h-8 border-slate-700 bg-slate-900/50 text-xs text-slate-100">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="border-slate-700 bg-slate-900">
+                        <SelectItem
+                          value="front"
+                          className="text-xs text-slate-100 focus:bg-slate-800"
+                        >
+                          In front of cards
+                        </SelectItem>
+                        <SelectItem
+                          value="behind"
+                          className="text-xs text-slate-100 focus:bg-slate-800"
+                        >
+                          Behind cards
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               )}
             </AccordionContent>
@@ -521,7 +594,7 @@ export function ProxySidebar() {
       </div>
 
       {/* Action Buttons */}
-      <div className="border-t border-slate-800 p-4 space-y-2">
+      <div className="space-y-2 border-t border-slate-800 p-4">
         {/* Copy Card List Button */}
         <Button
           className="w-full border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700"
