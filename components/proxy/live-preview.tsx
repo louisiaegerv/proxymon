@@ -4,9 +4,16 @@ import { useMemo, useState, useEffect, useCallback } from "react"
 import { useProxyList } from "@/stores/proxy-list"
 import { getFullImageUrl } from "@/lib/tcgdex"
 import { PAGE_DIMENSIONS, BleedMethod } from "@/types"
-import { generateProxyPDF, downloadPDF } from "@/lib/pdf"
+import { generateProxyPDF, downloadPDF, clearImageCache } from "@/lib/pdf"
 import { Button } from "@/components/ui/button"
-import { ZoomIn, ZoomOut, RotateCcw, CheckSquare, X } from "lucide-react"
+import {
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  CheckSquare,
+  X,
+  Loader2,
+} from "lucide-react"
 import { CardVariantModal } from "./card-variant-modal"
 import { BulkSelectionToolbar } from "./bulk-selection-toolbar"
 import {
@@ -74,8 +81,11 @@ export function LivePreview({
     deselectAll,
     clearSelection,
     removeItems,
+    isGenerating,
+    generationProgress,
+    setIsGenerating,
+    setGenerationProgress,
   } = useProxyList()
-  const [isGenerating, setIsGenerating] = useState(false)
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
   const [zoomIndex, setZoomIndex] = useState(2)
@@ -298,13 +308,19 @@ export function LivePreview({
   const handleGeneratePDF = async () => {
     if (items.length === 0) return
     setIsGenerating(true)
+    setGenerationProgress(null)
     try {
-      const pdfBytes = await generateProxyPDF(items, settings)
+      const pdfBytes = await generateProxyPDF(items, settings, (progress) => {
+        setGenerationProgress(progress)
+      })
       downloadPDF(pdfBytes, `proxymon-${totalCards}-cards.pdf`)
     } catch (error) {
       console.error("Failed to generate PDF:", error)
     } finally {
       setIsGenerating(false)
+      setGenerationProgress(null)
+      // Clear image cache to free memory after generation
+      clearImageCache()
     }
   }
 
@@ -477,6 +493,8 @@ export function LivePreview({
                             bleedColor={settings.bleedColor}
                             dpi={96}
                             fillParent
+                            cardWidth={settings.cardWidth}
+                            cardHeight={settings.cardHeight}
                           />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center bg-slate-200 text-xs">
@@ -614,6 +632,8 @@ export function LivePreview({
                   bleedColor={settings.bleedColor}
                   dpi={96}
                   fillParent
+                  cardWidth={settings.cardWidth}
+                  cardHeight={settings.cardHeight}
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-slate-200 text-xs">
@@ -624,6 +644,53 @@ export function LivePreview({
           ) : null}
         </DragOverlay>
       </DndContext>
+
+      {/* PDF Generation Progress Overlay */}
+      {isGenerating && generationProgress && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm">
+          <div className="w-80 rounded-xl border border-slate-700 bg-slate-800 p-6 shadow-2xl">
+            <div className="mb-4 flex items-center justify-center">
+              <div className="relative">
+                <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-xs font-semibold text-blue-400">
+                    {Math.round(
+                      (generationProgress.current / generationProgress.total) *
+                        100
+                    )}
+                    %
+                  </span>
+                </div>
+              </div>
+            </div>
+            <h3 className="mb-2 text-center text-lg font-semibold text-slate-100">
+              Generating PDF
+            </h3>
+            <p className="mb-4 text-center text-sm text-slate-400">
+              {generationProgress.message}
+            </p>
+            <div className="h-2 overflow-hidden rounded-full bg-slate-700">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-blue-500 to-blue-400 transition-all duration-300"
+                style={{
+                  width: `${
+                    (generationProgress.current / generationProgress.total) *
+                    100
+                  }%`,
+                }}
+              />
+            </div>
+            <p className="mt-2 text-center text-xs text-slate-500">
+              {generationProgress.stage === "bleed-generation" &&
+                `Step 1 of 3: Processing images...`}
+              {generationProgress.stage === "pdf-assembly" &&
+                `Step 2 of 3: Building pages...`}
+              {generationProgress.stage === "pdf-save" &&
+                `Step 3 of 3: Finalizing...`}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Legend */}
       <div className="mt-4 text-center text-xs text-slate-500">

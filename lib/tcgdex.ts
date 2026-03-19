@@ -44,14 +44,14 @@ export async function searchCards(
     // Build query to filter server-side
     const queryBuilder = Query.create()
 
-    // If set is specified, filter by set
+    // If set is specified, filter by set using contains for better matching
     if (options?.setId && options.setId !== "all") {
-      queryBuilder.equal("set.id", options.setId)
+      queryBuilder.contains("set.id", options.setId)
     }
 
-    // Filter by name using 'like' for partial matching
+    // Filter by name using 'contains' for partial matching
     if (query) {
-      queryBuilder.like("name", query)
+      queryBuilder.contains("name", query)
     }
 
     console.log(`[TCGdex API] Searching cards with query: "${query}"`)
@@ -102,7 +102,7 @@ export async function getSets() {
   }
 }
 
-// Fetch single card details
+// Fetch single card details by direct ID lookup
 export async function getCard(cardId: string) {
   try {
     console.log(`[TCGdex API] Fetching card: ${cardId}`)
@@ -110,6 +110,115 @@ export async function getCard(cardId: string) {
     return card
   } catch (error) {
     console.error("Error fetching card:", error)
+    return null
+  }
+}
+
+/**
+ * Find a card using a priority-based fallback strategy for better matching.
+ * This is useful for deck imports where we have name + set info but not the exact ID.
+ *
+ * Priority order:
+ * 1. Search by name + setCode + localId (e.g., "Pikachu" + "swsh11" + "123")
+ * 2. Search by name + setCode (e.g., "Pikachu" + "swsh11")
+ * 3. Search by name only
+ * 4. Return null if not found
+ *
+ * @param name - Card name to search for
+ * @param setCode - Set code (e.g., "swsh11")
+ * @param localId - Local card ID within the set (e.g., "123")
+ * @returns The found card or null if not found
+ */
+export async function findCard(
+  name: string,
+  setCode?: string,
+  localId?: string
+) {
+  try {
+    console.log(
+      `[TCGdex API] Finding card: "${name}" (set: ${setCode}, localId: ${localId})`
+    )
+
+    // Priority 1: Search by name + setCode + localId
+    if (name && setCode && localId) {
+      // First try with original localId using localId field + set.id
+      const queryBuilder = Query.create()
+        .contains("name", name)
+        .contains("localId", localId)
+        .contains("set.id", setCode)
+
+      console.log(
+        `[TCGdex API] Priority 1: Searching by name + set.id + localId`
+      )
+      const cards = await tcgdex.card.list(queryBuilder)
+
+      if (cards && cards.length > 0) {
+        console.log(
+          `[TCGdex API] Found card with Priority 1: ${cards[0].name} (${cards[0].id})`
+        )
+        return cards[0]
+      }
+
+      // If no results and localId is numeric, try with padded version (3 digits)
+      // Example: "95" → "095"
+      if (/^\d+$/.test(localId)) {
+        const paddedLocalId = localId.padStart(3, "0")
+        const paddedQueryBuilder = Query.create()
+          .contains("name", name)
+          .contains("localId", paddedLocalId)
+          .contains("set.id", setCode)
+
+        console.log(
+          `[TCGdex API] Priority 1b: Trying with padded localId: ${paddedLocalId}`
+        )
+        const paddedCards = await tcgdex.card.list(paddedQueryBuilder)
+
+        if (paddedCards && paddedCards.length > 0) {
+          console.log(
+            `[TCGdex API] Found card with Priority 1b: ${paddedCards[0].name} (${paddedCards[0].id})`
+          )
+          return paddedCards[0]
+        }
+      }
+    }
+
+    // Priority 2: Search by name + setCode
+    if (name && setCode) {
+      const queryBuilder = Query.create()
+        .contains("name", name)
+        .contains("set.id", setCode)
+
+      console.log(`[TCGdex API] Priority 2: Searching by name + set.id`)
+      const cards = await tcgdex.card.list(queryBuilder)
+
+      if (cards && cards.length > 0) {
+        console.log(
+          `[TCGdex API] Found card with Priority 2: ${cards[0].name} (${cards[0].id})`
+        )
+        return cards[0]
+      }
+    }
+
+    // Priority 3: Search by name only
+    if (name) {
+      const queryBuilder = Query.create().contains("name", name)
+
+      console.log(`[TCGdex API] Priority 3: Searching by name only`)
+      const cards = await tcgdex.card.list(queryBuilder)
+
+      if (cards && cards.length > 0) {
+        console.log(
+          `[TCGdex API] Found card with Priority 3: ${cards[0].name} (${cards[0].id})`
+        )
+        return cards[0]
+      }
+    }
+
+    // Priority 4: Not found
+    console.log(`[TCGdex API] Card not found: "${name}"`)
+    return null
+  } catch (error) {
+    console.error(`[TCGdex API] Error finding card "${name}":`, error)
     return null
   }
 }

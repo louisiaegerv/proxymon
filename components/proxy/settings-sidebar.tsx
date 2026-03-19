@@ -17,7 +17,7 @@ import {
   Check,
 } from "lucide-react"
 import { useProxyList } from "@/stores/proxy-list"
-import { generateProxyPDF, downloadPDF } from "@/lib/pdf"
+import { generateProxyPDF, downloadPDF, clearImageCache } from "@/lib/pdf"
 import { OFFSET_LIMITS } from "@/types"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
@@ -50,8 +50,15 @@ const ALL_SECTIONS = [
 ]
 
 export function SettingsSidebar() {
-  const { settings, updateSettings, items, getTotalCards } = useProxyList()
-  const [isGenerating, setIsGenerating] = useState(false)
+  const {
+    settings,
+    updateSettings,
+    items,
+    getTotalCards,
+    isGenerating,
+    setIsGenerating,
+    setGenerationProgress,
+  } = useProxyList()
   const [copied, setCopied] = useState(false)
   const [openSections, setOpenSections] = useState<string[]>([
     "page-layout",
@@ -73,13 +80,19 @@ export function SettingsSidebar() {
   const handleGeneratePDF = async () => {
     if (items.length === 0) return
     setIsGenerating(true)
+    setGenerationProgress(null)
     try {
-      const pdfBytes = await generateProxyPDF(items, settings)
+      const pdfBytes = await generateProxyPDF(items, settings, (progress) => {
+        setGenerationProgress(progress)
+      })
       downloadPDF(pdfBytes, `proxymon-${totalCards}-cards.pdf`)
     } catch (error) {
       console.error("Failed to generate PDF:", error)
     } finally {
       setIsGenerating(false)
+      setGenerationProgress(null)
+      // Clear image cache to free memory after generation
+      clearImageCache()
     }
   }
 

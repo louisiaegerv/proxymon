@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import { BleedMethod } from "@/types"
-import { generateProxyPDF, downloadPDF } from "@/lib/pdf"
+import { generateProxyPDF, downloadPDF, clearImageCache } from "@/lib/pdf"
 
 // Expandable section component
 interface ExpandableSectionProps {
@@ -75,10 +75,17 @@ function ExpandableSection({
 const ALL_SECTIONS = ["layout", "bleed", "quality", "offset", "export"]
 
 export function MobileSettings() {
-  const { settings, updateSettings, resetSettings, items, getTotalCards } =
-    useProxyList()
+  const {
+    settings,
+    updateSettings,
+    resetSettings,
+    items,
+    getTotalCards,
+    isGenerating,
+    setIsGenerating,
+    setGenerationProgress,
+  } = useProxyList()
   const [showResetConfirm, setShowResetConfirm] = useState(false)
-  const [isGenerating, setIsGenerating] = useState(false)
   const [copied, setCopied] = useState(false)
   const [expandedSections, setExpandedSections] = useState<string[]>(["layout"])
 
@@ -110,13 +117,19 @@ export function MobileSettings() {
   const handleGeneratePDF = async () => {
     if (items.length === 0) return
     setIsGenerating(true)
+    setGenerationProgress(null)
     try {
-      const pdfBytes = await generateProxyPDF(items, settings)
+      const pdfBytes = await generateProxyPDF(items, settings, (progress) => {
+        setGenerationProgress(progress)
+      })
       downloadPDF(pdfBytes, `proxymon-${totalCards}-cards.pdf`)
     } catch (error) {
       console.error("Failed to generate PDF:", error)
     } finally {
       setIsGenerating(false)
+      setGenerationProgress(null)
+      // Clear image cache to free memory after generation
+      clearImageCache()
     }
   }
 

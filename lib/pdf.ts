@@ -24,21 +24,33 @@ function getFullImageUrl(
   return `${baseUrl}/${quality}.png`
 }
 
+// Image cache to avoid double-fetching
+const imageCache = new Map<string, Uint8Array>()
+
 async function fetchImage(url: string): Promise<Uint8Array | null> {
   try {
+    // Check cache first
+    if (imageCache.has(url)) {
+      return imageCache.get(url)!
+    }
+
     // Handle data URLs
     if (url.startsWith("data:")) {
       const base64Data = url.split(",")[1]
       if (!base64Data) return null
       const buffer = Buffer.from(base64Data, "base64")
-      return new Uint8Array(buffer)
+      const data = new Uint8Array(buffer)
+      imageCache.set(url, data)
+      return data
     }
 
     // Handle regular URLs
     const response = await fetch(url)
     if (!response.ok) throw new Error("Failed to fetch image")
     const arrayBuffer = await response.arrayBuffer()
-    return new Uint8Array(arrayBuffer)
+    const data = new Uint8Array(arrayBuffer)
+    imageCache.set(url, data)
+    return data
   } catch (error) {
     console.error("Error fetching image:", error)
     return null
@@ -93,9 +105,47 @@ async function generateBleedImage(
   }
 }
 
+/**
+ * Process items in chunks to avoid overwhelming the browser/API
+ */
+async function processInChunks<T, R>(
+  items: T[],
+  processor: (item: T) => Promise<R>,
+  chunkSize: number,
+  onProgress?: (completed: number, total: number) => void
+): Promise<R[]> {
+  const results: R[] = []
+  const total = items.length
+
+  for (let i = 0; i < total; i += chunkSize) {
+    const chunk = items.slice(i, i + chunkSize)
+    const chunkResults = await Promise.all(chunk.map(processor))
+    results.push(...chunkResults)
+
+    if (onProgress) {
+      onProgress(Math.min(i + chunkSize, total), total)
+    }
+
+    // Small delay between chunks to let the browser breathe
+    if (i + chunkSize < total) {
+      await new Promise((resolve) => setTimeout(resolve, 10))
+    }
+  }
+
+  return results
+}
+
+export interface PDFGenerationProgress {
+  stage: "bleed-generation" | "pdf-assembly" | "pdf-save"
+  current: number
+  total: number
+  message: string
+}
+
 export async function generateProxyPDF(
   items: ProxyItem[],
-  settings: PrintSettings
+  settings: PrintSettings,
+  onProgress?: (progress: PDFGenerationProgress) => void
 ): Promise<Uint8Array> {
   const pdfDoc = await PDFDocument.create()
 
@@ -162,10 +212,19 @@ export async function generateProxyPDF(
       ...new Map(cardsToPrint.map((c) => [c.cardId, c])).values(),
     ]
 
-    await Promise.all(
-      uniqueCards.map(async (card) => {
+    onProgress?.({
+      stage: "bleed-generation",
+      current: 0,
+      total: uniqueCards.length,
+      message: `Generating bleed for ${uniqueCards.length} unique cards...`,
+    })
+
+    // Process in chunks of 5 to avoid overwhelming the API
+    await processInChunks(
+      uniqueCards,
+      async (card) => {
         const imageUrl = getFullImageUrl(card.image, settings.imageQuality)
-        if (!imageUrl) return
+        if (!imageUrl) return null
 
         const bleedImageUrl = await generateBleedImage(
           imageUrl,
@@ -177,9 +236,26 @@ export async function generateProxyPDF(
         if (bleedImageUrl) {
           bleedImageCache.set(card.cardId, bleedImageUrl)
         }
-      })
+        return card.cardId
+      },
+      5, // Process 5 cards at a time
+      (completed, total) => {
+        onProgress?.({
+          stage: "bleed-generation",
+          current: completed,
+          total,
+          message: `Generated bleed for ${completed} of ${total} cards...`,
+        })
+      }
     )
   }
+
+  onProgress?.({
+    stage: "pdf-assembly",
+    current: 0,
+    total: totalPages,
+    message: `Assembling ${totalPages} pages...`,
+  })
 
   for (let pageIndex = 0; pageIndex < totalPages; pageIndex++) {
     const page = pdfDoc.addPage([pageSize.width, pageSize.height])
@@ -189,8 +265,20 @@ export async function generateProxyPDF(
       startCardIndex + cardsPerPage
     )
 
-    // Draw cut lines at each card's trim box boundaries
-    if (settings.showCutLines) {
+    // Report progress every few pages
+    if (pageIndex % 3 === 0 || pageIndex === totalPages - 1) {
+      onProgress?.({
+        stage: "pdf-assembly",
+        current: pageIndex + 1,
+        total: totalPages,
+        message: `Assembling page ${pageIndex + 1} of ${totalPages}...`,
+      })
+    }
+
+    // Helper function to draw cut lines at each card's trim box boundaries
+    const drawCutLines = () => {
+      if (!settings.showCutLines) return
+
       // Get custom cut line color or default to emerald
       const cutColor = settings.cutLineColor
         ? rgb(
@@ -250,53 +338,74 @@ export async function generateProxyPDF(
       }
     }
 
-    // Draw card images (with bleed extending past cut lines)
-    for (let i = 0; i < pageCards.length; i++) {
-      const card = pageCards[i]
-      const row = Math.floor(i / settings.cardsPerRow)
-      const col = i % settings.cardsPerRow
+    // Helper function to draw card images (with bleed extending past cut lines)
+    const drawCardImages = async () => {
+      for (let i = 0; i < pageCards.length; i++) {
+        const card = pageCards[i]
+        const row = Math.floor(i / settings.cardsPerRow)
+        const col = i % settings.cardsPerRow
 
-      // Image position: base grid position
-      // Trim box is at: image position + bleed
-      // Image extends bleed past trim box on each side
-      // In PDF coordinates, y is the bottom of the image
-      const imageX = marginX + col * spacingX
-      const imageY =
-        pageSize.height - marginY - row * spacingY - imageHeightPoints
+        // Image position: base grid position
+        // Trim box is at: image position + bleed
+        // Image extends bleed past trim box on each side
+        // In PDF coordinates, y is the bottom of the image
+        const imageX = marginX + col * spacingX
+        const imageY =
+          pageSize.height - marginY - row * spacingY - imageHeightPoints
 
-      // Use cached bleed image if available, otherwise fall back to original
-      const cachedBleedImage = bleedImageCache.get(card.cardId)
-      const imageUrl =
-        cachedBleedImage || getFullImageUrl(card.image, settings.imageQuality)
+        // Use cached bleed image if available, otherwise fall back to original
+        const cachedBleedImage = bleedImageCache.get(card.cardId)
+        const imageUrl =
+          cachedBleedImage || getFullImageUrl(card.image, settings.imageQuality)
 
-      if (imageUrl) {
-        try {
-          const imageData = await fetchImage(imageUrl)
-          if (imageData) {
-            let embeddedImage
-            try {
-              embeddedImage = await pdfDoc.embedPng(imageData)
-            } catch {
+        if (imageUrl) {
+          try {
+            const imageData = await fetchImage(imageUrl)
+            if (imageData) {
+              let embeddedImage
               try {
-                embeddedImage = await pdfDoc.embedJpg(imageData)
+                embeddedImage = await pdfDoc.embedPng(imageData)
               } catch {
-                continue
+                try {
+                  embeddedImage = await pdfDoc.embedJpg(imageData)
+                } catch {
+                  continue
+                }
               }
-            }
 
-            page.drawImage(embeddedImage, {
-              x: imageX,
-              y: imageY,
-              width: imageWidthPoints,
-              height: imageHeightPoints,
-            })
+              page.drawImage(embeddedImage, {
+                x: imageX,
+                y: imageY,
+                width: imageWidthPoints,
+                height: imageHeightPoints,
+              })
+            }
+          } catch (error) {
+            console.error("Error embedding image:", error)
           }
-        } catch (error) {
-          console.error("Error embedding image:", error)
         }
       }
     }
+
+    // Draw based on cutLinePosition setting
+    // PDF uses painter's model: later drawings appear on top
+    if (settings.cutLinePosition === "front") {
+      // Draw images first, then cut lines on top
+      await drawCardImages()
+      drawCutLines()
+    } else {
+      // Default: draw cut lines first, then images on top
+      drawCutLines()
+      await drawCardImages()
+    }
   }
+
+  onProgress?.({
+    stage: "pdf-save",
+    current: 1,
+    total: 1,
+    message: "Finalizing PDF...",
+  })
 
   return await pdfDoc.save()
 }
@@ -319,3 +428,10 @@ export function downloadPDF(
 }
 
 export { getFullImageUrl }
+
+/**
+ * Clear the image cache to free memory
+ */
+export function clearImageCache() {
+  imageCache.clear()
+}

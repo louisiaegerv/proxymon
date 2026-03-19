@@ -25,6 +25,9 @@ export interface CardWithBleedProps {
   // Fill parent container instead of setting explicit mm dimensions
   // Use when parent already accounts for bleed area sizing
   fillParent?: boolean
+  // Card dimensions in mm (defaults to standard Pokemon card size: 63mm x 88mm)
+  cardWidth?: number
+  cardHeight?: number
 }
 
 /**
@@ -50,6 +53,8 @@ export function CardWithBleed({
   bleedColor,
   dpi = 300,
   fillParent = false,
+  cardWidth = 63,
+  cardHeight = 88,
 }: CardWithBleedProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -58,9 +63,9 @@ export function CardWithBleed({
     string | undefined
   >(bleedImageUrl)
 
-  // Standard card dimensions in mm
-  const cardWidthMm = 63
-  const cardHeightMm = 88
+  // Use provided dimensions or defaults (standard Pokemon card: 63mm x 88mm)
+  const cardWidthMm = cardWidth
+  const cardHeightMm = cardHeight
 
   // Calculate dimensions in pixels at specified DPI
   const mmToPx = (mm: number) => (mm * dpi) / 25.4
