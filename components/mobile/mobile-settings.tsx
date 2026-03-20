@@ -79,12 +79,13 @@ export function MobileSettings() {
     settings,
     updateSettings,
     resetSettings,
-    items,
+    getActiveDeck,
     getTotalCards,
     isGenerating,
     setIsGenerating,
     setGenerationProgress,
   } = useProxyList()
+  const items = getActiveDeck()?.items ?? []
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [copied, setCopied] = useState(false)
   const [expandedSections, setExpandedSections] = useState<string[]>(["layout"])

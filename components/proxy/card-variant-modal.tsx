@@ -66,7 +66,7 @@ export function CardVariantModal({
   const processedIndexRef = useRef(0)
 
   const updateItemCard = useProxyList((state) => state.updateItemCard)
-  const items = useProxyList((state) => state.items)
+  const items = useProxyList((state) => state.getActiveDeck()?.items ?? [])
 
   const currentItem = items.find((item) => item.id === itemId)
 

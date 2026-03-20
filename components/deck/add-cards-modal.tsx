@@ -65,7 +65,9 @@ export function AddCardsModal({
   const [importSource, setImportSource] = useState<string>("")
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
 
-  const existingItems = useProxyList((state) => state.items)
+  const existingItems = useProxyList(
+    (state) => state.getActiveDeck()?.items ?? []
+  )
   const clearList = useProxyList((state) => state.clearList)
   const existingCardCount = existingItems.reduce(
     (sum, item) => sum + item.quantity,
@@ -232,7 +234,7 @@ export function AddCardsModal({
             </div>
 
             {/* Content Area */}
-            <div className="max-h-[50vh] min-h-[300px] overflow-y-auto px-6 py-4">
+            <div className="max-h-[50vh] min-h-75 overflow-y-auto px-6 py-4">
               {activeMethod === "text" && (
                 <div className="flex h-full flex-col gap-4">
                   <div className="flex items-center justify-between">
@@ -262,7 +264,7 @@ export function AddCardsModal({
                     value={textInput}
                     onChange={(e) => handleTextChange(e.target.value)}
                     placeholder={`Paste deck list here...\n\nExamples:\n4 Charmander OBF 26\n3 Charizard ex OBF 125\nBoss's Orders PAL 172`}
-                    className="min-h-[200px] resize-none border-slate-700 bg-slate-800/50 font-mono text-sm text-slate-100 placeholder:text-slate-600"
+                    className="min-h-50 resize-none border-slate-700 bg-slate-800/50 font-mono text-sm text-slate-100 placeholder:text-slate-600"
                   />
 
                   <div className="text-xs text-slate-500">
@@ -272,7 +274,7 @@ export function AddCardsModal({
                         4 Charmander OBF 26 (quantity + name + set + number)
                       </li>
                       <li>4 Charmander (quantity + name only)</li>
-                      <li>Boss's Orders (name only, defaults to 1)</li>
+                      <li>Boss&Quot;s Orders (name only, defaults to 1)</li>
                     </ul>
                   </div>
                 </div>

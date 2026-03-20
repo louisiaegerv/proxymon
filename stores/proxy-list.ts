@@ -1,7 +1,7 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import { getProcessedCardImage } from "@/lib/tcgdex"
-import type { ProxyItem, PrintSettings } from "@/types"
+import type { ProxyItem, PrintSettings, Deck } from "@/types"
 
 /**
  * Re-process images for all items that have an originalImage but no processed image.
@@ -49,8 +49,21 @@ async function reprocessImagesAfterRehydration(
 }
 
 interface ProxyListState {
-  // Proxy list
-  items: ProxyItem[]
+  // Multi-deck structure
+  decks: Deck[]
+  activeDeckId: string | null
+
+  // Deck management methods
+  createDeck: (name: string) => string
+  switchDeck: (deckId: string) => void
+  renameDeck: (deckId: string, name: string) => void
+  deleteDeck: (deckId: string) => void
+  getActiveDeck: () => Deck | null
+  getDeckById: (deckId: string) => Deck | undefined
+
+  // Proxy list methods (operate on active deck)
+  getItems: () => ProxyItem[]
+  setItems: (items: ProxyItem[]) => void
   addItem: (
     card: {
       cardId: string
@@ -73,6 +86,9 @@ interface ProxyListState {
   updateItemCard: (id: string, cardData: Partial<ProxyItem>) => void
   clearList: () => void
   getTotalCards: () => number
+  getItemCount: () => number
+  hasItems: () => boolean
+  getTotalCardCount: () => number
 
   // Selection state for bulk operations
   selectedIds: Set<string>
@@ -112,11 +128,15 @@ interface ProxyListState {
   ) => void
 }
 
+// Storage version for migrations
+const STORAGE_VERSION = 2
+
 export const useProxyList = create<ProxyListState>()(
   persist(
     (set, get) => ({
       // Initial state
-      items: [],
+      decks: [],
+      activeDeckId: null,
       selectedIds: new Set(),
       isBulkMode: false,
       lastSelectedId: null,
@@ -137,20 +157,139 @@ export const useProxyList = create<ProxyListState>()(
         bleedMethod: "replicate",
       },
 
-      // Actions
-      addItem: (card, quantity = 1) => {
-        const items = get().items
+      // Deck management
+      createDeck: (name: string) => {
+        const now = Date.now()
+        const newDeck: Deck = {
+          id: `deck-${now}`,
+          name,
+          items: [],
+          createdAt: now,
+          updatedAt: now,
+        }
 
-        // DEBUG: Log what's being added
-        console.log("[DEBUG addItem] Adding card:", {
-          name: card.name,
-          cardId: card.cardId,
-          hasImage: !!card.image,
-          imagePreview: card.image?.slice(0, 50),
-          hasOriginalImage: !!card.originalImage,
-          originalImagePreview: card.originalImage?.slice(0, 50),
-          quantity,
+        set((state) => ({
+          decks: [...state.decks, newDeck],
+          activeDeckId: newDeck.id,
+        }))
+
+        return newDeck.id
+      },
+
+      switchDeck: (deckId: string) => {
+        const deck = get().decks.find((d) => d.id === deckId)
+        if (!deck) return
+
+        set({
+          activeDeckId: deckId,
+          selectedIds: new Set(),
+          isBulkMode: false,
+          lastSelectedId: null,
         })
+
+        // Lazy processing: Check if any items in the target deck need reprocessing
+        const itemsNeedingReprocess = deck.items.filter(
+          (item) =>
+            item.originalImage &&
+            (item.image === item.originalImage || !item.image)
+        )
+
+        if (itemsNeedingReprocess.length > 0) {
+          console.log(
+            "[switchDeck] Scheduling re-processing for",
+            itemsNeedingReprocess.length,
+            "items in deck:",
+            deck.name
+          )
+          // Use setTimeout to ensure this runs after the state update
+          setTimeout(() => {
+            const store = useProxyList.getState()
+            reprocessImagesAfterRehydration(
+              itemsNeedingReprocess,
+              store.updateItemCard
+            )
+          }, 100)
+        }
+      },
+
+      renameDeck: (deckId: string, name: string) => {
+        set((state) => ({
+          decks: state.decks.map((deck) =>
+            deck.id === deckId ? { ...deck, name, updatedAt: Date.now() } : deck
+          ),
+        }))
+      },
+
+      deleteDeck: (deckId: string) => {
+        set((state) => {
+          const newDecks = state.decks.filter((d) => d.id !== deckId)
+          const newActiveDeckId =
+            state.activeDeckId === deckId
+              ? newDecks.length > 0
+                ? newDecks[0].id
+                : null
+              : state.activeDeckId
+
+          return {
+            decks: newDecks,
+            activeDeckId: newActiveDeckId,
+            selectedIds: new Set(),
+            isBulkMode: false,
+            lastSelectedId: null,
+          }
+        })
+      },
+
+      getActiveDeck: () => {
+        const { decks, activeDeckId } = get()
+        if (!activeDeckId) return null
+        return decks.find((d) => d.id === activeDeckId) || null
+      },
+
+      getDeckById: (deckId: string) => {
+        return get().decks.find((d) => d.id === deckId)
+      },
+
+      getItems: () => {
+        const { decks, activeDeckId } = get()
+        if (!activeDeckId) return []
+        const activeDeck = decks.find((d) => d.id === activeDeckId)
+        return activeDeck?.items ?? []
+      },
+
+      setItems: (items: ProxyItem[]) => {
+        const activeDeck = get().getActiveDeck()
+        if (!activeDeck) return
+
+        set((state) => ({
+          decks: state.decks.map((deck) =>
+            deck.id === activeDeck.id
+              ? { ...deck, items, updatedAt: Date.now() }
+              : deck
+          ),
+        }))
+      },
+
+      // Actions - operate on active deck
+      addItem: (card, quantity = 1) => {
+        let targetDeckId = get().activeDeckId
+
+        // Auto-create default deck if none exists
+        if (!targetDeckId || !get().decks.find((d) => d.id === targetDeckId)) {
+          const now = Date.now()
+          const defaultDeck: Deck = {
+            id: `deck-${now}`,
+            name: "Default Deck",
+            items: [],
+            createdAt: now,
+            updatedAt: now,
+          }
+          set((state) => ({
+            decks: [...state.decks, defaultDeck],
+            activeDeckId: defaultDeck.id,
+          }))
+          targetDeckId = defaultDeck.id
+        }
 
         const newItems: ProxyItem[] = []
         const baseId = `${card.cardId}-${Date.now()}`
@@ -170,16 +309,39 @@ export const useProxyList = create<ProxyListState>()(
           })
         }
 
-        set({ items: [...items, ...newItems] })
+        set((state) => ({
+          decks: state.decks.map((deck) =>
+            deck.id === targetDeckId
+              ? {
+                  ...deck,
+                  items: [...deck.items, ...newItems],
+                  updatedAt: Date.now(),
+                }
+              : deck
+          ),
+        }))
+
+        const targetDeck = get().decks.find((d) => d.id === targetDeckId)
         console.log(
           "[DEBUG addItem] Items count after add:",
-          items.length + newItems.length
+          (targetDeck?.items.length ?? 0) + newItems.length
         )
       },
 
       removeItem: (id) => {
+        const activeDeck = get().getActiveDeck()
+        if (!activeDeck) return
+
         set((state) => ({
-          items: state.items.filter((item) => item.id !== id),
+          decks: state.decks.map((deck) =>
+            deck.id === activeDeck.id
+              ? {
+                  ...deck,
+                  items: deck.items.filter((item) => item.id !== id),
+                  updatedAt: Date.now(),
+                }
+              : deck
+          ),
           selectedIds: new Set(
             [...state.selectedIds].filter((sid) => sid !== id)
           ),
@@ -187,8 +349,19 @@ export const useProxyList = create<ProxyListState>()(
       },
 
       removeItems: (ids) => {
+        const activeDeck = get().getActiveDeck()
+        if (!activeDeck) return
+
         set((state) => ({
-          items: state.items.filter((item) => !ids.includes(item.id)),
+          decks: state.decks.map((deck) =>
+            deck.id === activeDeck.id
+              ? {
+                  ...deck,
+                  items: deck.items.filter((item) => !ids.includes(item.id)),
+                  updatedAt: Date.now(),
+                }
+              : deck
+          ),
           selectedIds: new Set(
             [...state.selectedIds].filter((sid) => !ids.includes(sid))
           ),
@@ -197,61 +370,144 @@ export const useProxyList = create<ProxyListState>()(
 
       updateQuantity: (id, quantity) => {
         if (quantity < 1) return
+        const activeDeck = get().getActiveDeck()
+        if (!activeDeck) return
 
         set((state) => ({
-          items: state.items.map((item) =>
-            item.id === id ? { ...item, quantity } : item
+          decks: state.decks.map((deck) =>
+            deck.id === activeDeck.id
+              ? {
+                  ...deck,
+                  items: deck.items.map((item) =>
+                    item.id === id ? { ...item, quantity } : item
+                  ),
+                  updatedAt: Date.now(),
+                }
+              : deck
           ),
         }))
       },
 
       updateVariant: (id, variant) => {
+        const activeDeck = get().getActiveDeck()
+        if (!activeDeck) return
+
         set((state) => ({
-          items: state.items.map((item) =>
-            item.id === id ? { ...item, variant } : item
+          decks: state.decks.map((deck) =>
+            deck.id === activeDeck.id
+              ? {
+                  ...deck,
+                  items: deck.items.map((item) =>
+                    item.id === id ? { ...item, variant } : item
+                  ),
+                  updatedAt: Date.now(),
+                }
+              : deck
           ),
         }))
       },
 
       reorderItems: (startIndex, endIndex) => {
-        const items = [...get().items]
-        const [removed] = items.splice(startIndex, 1)
-        items.splice(endIndex, 0, removed)
-        set({ items })
+        const activeDeck = get().getActiveDeck()
+        if (!activeDeck) return
+
+        set((state) => ({
+          decks: state.decks.map((deck) => {
+            if (deck.id !== activeDeck.id) return deck
+            const items = [...deck.items]
+            const [removed] = items.splice(startIndex, 1)
+            items.splice(endIndex, 0, removed)
+            return { ...deck, items, updatedAt: Date.now() }
+          }),
+        }))
       },
 
       reorderItemsById: (activeId: string, overId: string) => {
-        const items = [...get().items]
-        const activeIndex = items.findIndex((item) => item.id === activeId)
-        const overIndex = items.findIndex((item) => item.id === overId)
+        const activeDeck = get().getActiveDeck()
+        if (!activeDeck) return
 
-        if (activeIndex === -1 || overIndex === -1 || activeIndex === overIndex)
-          return
+        set((state) => ({
+          decks: state.decks.map((deck) => {
+            if (deck.id !== activeDeck.id) return deck
+            const items = [...deck.items]
+            const activeIndex = items.findIndex((item) => item.id === activeId)
+            const overIndex = items.findIndex((item) => item.id === overId)
 
-        const [removed] = items.splice(activeIndex, 1)
-        items.splice(overIndex, 0, removed)
-        set({ items })
+            if (
+              activeIndex === -1 ||
+              overIndex === -1 ||
+              activeIndex === overIndex
+            )
+              return deck
+
+            const [removed] = items.splice(activeIndex, 1)
+            items.splice(overIndex, 0, removed)
+            return { ...deck, items, updatedAt: Date.now() }
+          }),
+        }))
       },
 
       updateItemCard: (id, cardData) => {
+        const activeDeck = get().getActiveDeck()
+        if (!activeDeck) return
+
         set((state) => ({
-          items: state.items.map((item) =>
-            item.id === id ? { ...item, ...cardData } : item
+          decks: state.decks.map((deck) =>
+            deck.id === activeDeck.id
+              ? {
+                  ...deck,
+                  items: deck.items.map((item) =>
+                    item.id === id ? { ...item, ...cardData } : item
+                  ),
+                  updatedAt: Date.now(),
+                }
+              : deck
           ),
         }))
       },
 
       clearList: () => {
-        set({
-          items: [],
+        const activeDeck = get().getActiveDeck()
+        if (!activeDeck) return
+
+        set((state) => ({
+          decks: state.decks.map((deck) =>
+            deck.id === activeDeck.id
+              ? {
+                  ...deck,
+                  items: [],
+                  updatedAt: Date.now(),
+                }
+              : deck
+          ),
           selectedIds: new Set(),
           isBulkMode: false,
           lastSelectedId: null,
-        })
+        }))
       },
 
       getTotalCards: () => {
-        return get().items.reduce((sum, item) => sum + item.quantity, 0)
+        const activeDeck = get().getActiveDeck()
+        if (!activeDeck) return 0
+        return activeDeck.items.reduce((sum, item) => sum + item.quantity, 0)
+      },
+
+      getItemCount: () => {
+        const activeDeck = get().getActiveDeck()
+        if (!activeDeck) return 0
+        return activeDeck.items.length
+      },
+
+      hasItems: () => {
+        const activeDeck = get().getActiveDeck()
+        if (!activeDeck) return false
+        return activeDeck.items.length > 0
+      },
+
+      getTotalCardCount: () => {
+        const activeDeck = get().getActiveDeck()
+        if (!activeDeck) return 0
+        return activeDeck.items.reduce((sum, item) => sum + item.quantity, 0)
       },
 
       // Selection actions
@@ -294,7 +550,10 @@ export const useProxyList = create<ProxyListState>()(
       },
 
       selectRange: (startId, endId) => {
-        const items = get().items
+        const activeDeck = get().getActiveDeck()
+        if (!activeDeck) return
+
+        const items = activeDeck.items
         const startIndex = items.findIndex((item) => item.id === startId)
         const endIndex = items.findIndex((item) => item.id === endId)
 
@@ -315,8 +574,11 @@ export const useProxyList = create<ProxyListState>()(
       },
 
       selectAll: () => {
-        set((state) => ({
-          selectedIds: new Set(state.items.map((item) => item.id)),
+        const activeDeck = get().getActiveDeck()
+        if (!activeDeck) return
+
+        set(() => ({
+          selectedIds: new Set(activeDeck.items.map((item) => item.id)),
         }))
       },
 
@@ -367,9 +629,63 @@ export const useProxyList = create<ProxyListState>()(
     }),
     {
       name: "proxymon-proxy-list",
+      version: STORAGE_VERSION,
+      migrate: (persistedState, version) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const state = persistedState as any
+
+        // Migration from v1 to v2: Convert flat items array to decks structure
+        if (version < 2 && state.items && Array.isArray(state.items)) {
+          console.log(
+            "[migrate] Migrating from v1 to v2: Converting items array to decks structure"
+          )
+          const now = Date.now()
+          const migratedDeck: Deck = {
+            id: `deck-${now}`,
+            name: "Default Deck",
+            items: state.items,
+            createdAt: now,
+            updatedAt: now,
+          }
+          state.decks = [migratedDeck]
+          state.activeDeckId = migratedDeck.id
+          delete state.items
+        }
+
+        // Ensure decks array exists
+        if (!state.decks || !Array.isArray(state.decks)) {
+          state.decks = []
+        }
+
+        // Ensure at least one deck exists
+        if (state.decks.length === 0) {
+          const now = Date.now()
+          const defaultDeck: Deck = {
+            id: `deck-${now}`,
+            name: "Default Deck",
+            items: [],
+            createdAt: now,
+            updatedAt: now,
+          }
+          state.decks = [defaultDeck]
+          state.activeDeckId = defaultDeck.id
+        }
+
+        // Ensure activeDeckId is valid
+        if (
+          !state.activeDeckId ||
+          !state.decks.find((d: Deck) => d.id === state.activeDeckId)
+        ) {
+          state.activeDeckId = state.decks[0]?.id || null
+        }
+
+        return state
+      },
       partialize: (state) => {
         // DEBUG: Log what we're about to persist
-        const itemsWithMissingOriginalImage = state.items.filter(
+        const activeDeck = state.getActiveDeck()
+        const itemsToLog = activeDeck?.items ?? []
+        const itemsWithMissingOriginalImage = itemsToLog.filter(
           (item) => !item.originalImage
         )
         if (itemsWithMissingOriginalImage.length > 0) {
@@ -384,31 +700,19 @@ export const useProxyList = create<ProxyListState>()(
         }
         console.log(
           "[DEBUG partialize] Persisting",
-          state.items.length,
-          "items"
-        )
-        console.log(
-          "[DEBUG partialize] Sample item:",
-          state.items[0]
-            ? {
-                id: state.items[0].id,
-                name: state.items[0].name,
-                hasOriginalImage: !!state.items[0].originalImage,
-                originalImagePreview: state.items[0].originalImage?.slice(
-                  0,
-                  50
-                ),
-                hasImage: !!state.items[0].image,
-                imagePreview: state.items[0].image?.slice(0, 50),
-              }
-            : "no items"
+          itemsToLog.length,
+          "items in active deck"
         )
 
         return {
-          items: state.items.map((item) => ({
-            ...item,
-            image: undefined,
+          decks: state.decks.map((deck) => ({
+            ...deck,
+            items: deck.items.map((item) => ({
+              ...item,
+              image: undefined,
+            })),
           })),
+          activeDeckId: state.activeDeckId,
           settings: state.settings,
           // Don't persist selection state
           selectedIds: new Set(),
@@ -419,7 +723,7 @@ export const useProxyList = create<ProxyListState>()(
           generationProgress: null,
         }
       },
-      onRehydrateStorage: (state) => {
+      onRehydrateStorage: () => {
         // Return the rehydration callback that will receive the state
         return (rehydratedState, error) => {
           if (error) {
@@ -432,31 +736,70 @@ export const useProxyList = create<ProxyListState>()(
             return
           }
 
+          // Migration: Check for old format (items array at root level)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const anyState = rehydratedState as any
+          if (anyState.items && Array.isArray(anyState.items)) {
+            console.log(
+              "[DEBUG onRehydrate] Migrating from old format (v1) to new format (v2)"
+            )
+            const now = Date.now()
+            const migratedDeck: Deck = {
+              id: `deck-${now}`,
+              name: "Default Deck",
+              items: anyState.items,
+              createdAt: now,
+              updatedAt: now,
+            }
+            rehydratedState.decks = [migratedDeck]
+            rehydratedState.activeDeckId = migratedDeck.id
+            // Remove old items property
+            delete anyState.items
+          }
+
+          // Ensure at least one deck exists
+          if (!rehydratedState.decks || rehydratedState.decks.length === 0) {
+            const now = Date.now()
+            const defaultDeck: Deck = {
+              id: `deck-${now}`,
+              name: "Default Deck",
+              items: [],
+              createdAt: now,
+              updatedAt: now,
+            }
+            rehydratedState.decks = [defaultDeck]
+            rehydratedState.activeDeckId = defaultDeck.id
+          }
+
+          // Ensure activeDeckId is valid
+          if (
+            !rehydratedState.activeDeckId ||
+            !rehydratedState.decks.find(
+              (d: Deck) => d.id === rehydratedState.activeDeckId
+            )
+          ) {
+            rehydratedState.activeDeckId = rehydratedState.decks[0]?.id || null
+          }
+
+          const activeDeck = rehydratedState.decks.find(
+            (d: Deck) => d.id === rehydratedState.activeDeckId
+          )
+          const itemsToProcess = activeDeck?.items ?? []
+
           console.log(
             "[DEBUG onRehydrate] Rehydrating",
-            rehydratedState.items?.length ?? 0,
-            "items"
-          )
-          console.log(
-            "[DEBUG onRehydrate] Sample item before:",
-            rehydratedState.items?.[0]
-              ? {
-                  id: rehydratedState.items[0].id,
-                  name: rehydratedState.items[0].name,
-                  hasOriginalImage: !!rehydratedState.items[0].originalImage,
-                  originalImagePreview:
-                    rehydratedState.items[0].originalImage?.slice(0, 50),
-                  hasImage: !!rehydratedState.items[0].image,
-                }
-              : "no items"
+            itemsToProcess.length,
+            "items in active deck"
           )
 
           // Track which items need re-processing (have originalImage)
+          // Only collect items from the active deck since updateItemCard only operates on active deck
           const itemsNeedingReprocess: ProxyItem[] = []
 
           // Restore images from originalImage and track items needing re-processing
-          rehydratedState.items =
-            rehydratedState.items?.map((item: ProxyItem) => {
+          rehydratedState.decks = rehydratedState.decks.map((deck: Deck) => ({
+            ...deck,
+            items: deck.items.map((item: ProxyItem) => {
               const restoredImage = item.originalImage || item.image
               if (!restoredImage) {
                 console.warn(
@@ -473,8 +816,12 @@ export const useProxyList = create<ProxyListState>()(
                 )
               }
 
-              // If item has originalImage, it needs re-processing to restore sharp corners
-              if (item.originalImage) {
+              // Only track items from active deck for reprocessing
+              // since updateItemCard only operates on the active deck
+              if (
+                item.originalImage &&
+                deck.id === rehydratedState.activeDeckId
+              ) {
                 itemsNeedingReprocess.push({ ...item, image: restoredImage })
               }
 
@@ -482,19 +829,8 @@ export const useProxyList = create<ProxyListState>()(
                 ...item,
                 image: restoredImage,
               }
-            }) ?? []
-
-          console.log(
-            "[DEBUG onRehydrate] Sample item after:",
-            rehydratedState.items?.[0]
-              ? {
-                  id: rehydratedState.items[0].id,
-                  name: rehydratedState.items[0].name,
-                  hasImage: !!rehydratedState.items[0].image,
-                  imagePreview: rehydratedState.items[0].image?.slice(0, 50),
-                }
-              : "no items"
-          )
+            }),
+          }))
 
           // Reset selection state
           rehydratedState.selectedIds = new Set()

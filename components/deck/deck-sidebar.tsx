@@ -17,6 +17,7 @@ import {
 import { cn } from "@/lib/utils"
 import { AddCardsModal } from "./add-cards-modal"
 import { CardList } from "./card-list"
+import { DeckSelector } from "./deck-selector"
 import type { ProxyItem } from "@/types"
 
 interface DeckSidebarProps {
@@ -33,7 +34,7 @@ export function DeckSidebar({ variant = "desktop" }: DeckSidebarProps) {
 
   const addItem = useProxyList((state) => state.addItem)
   const clearList = useProxyList((state) => state.clearList)
-  const items = useProxyList((state) => state.items)
+  const items = useProxyList((state) => state.getActiveDeck()?.items ?? [])
   const totalCards = useProxyList((state) => state.getTotalCards)()
   const reorderItems = useProxyList((state) => state.reorderItems)
   const removeItems = useProxyList((state) => state.removeItems)
@@ -106,8 +107,8 @@ export function DeckSidebar({ variant = "desktop" }: DeckSidebarProps) {
   }
 
   const handleReorder = useCallback((newItems: ProxyItem[]) => {
-    // Update the store with the new order using setState
-    useProxyList.setState({ items: newItems })
+    // Update the store with the new order using setItems
+    useProxyList.getState().setItems(newItems)
   }, [])
 
   const handleRemove = useCallback(
@@ -128,36 +129,31 @@ export function DeckSidebar({ variant = "desktop" }: DeckSidebarProps) {
       {/* Header */}
       <div
         className={cn(
-          "flex-shrink-0 border-b border-slate-800",
+          "shrink-0 border-b border-slate-800",
           isMobile
             ? "px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top,0px))]"
             : "p-4"
         )}
       >
+        {/* Deck Selector - Primary deck identification */}
+        <DeckSelector className={cn("mb-3", isMobile && "text-sm")} />
+
+        {/* Card count and clear action */}
         <div className="flex items-center justify-between">
-          <div>
-            <h1
-              className={cn(
-                "font-bold text-slate-100",
-                isMobile ? "text-lg" : "text-base"
-              )}
-            >
-              My Deck
-            </h1>
-            <p className="text-xs text-slate-500">
-              {items.length > 0
-                ? `${totalCards} cards (${items.length} unique)`
-                : "No cards yet"}
-            </p>
-          </div>
+          <p className="text-xs text-slate-500">
+            {items.length > 0
+              ? `${totalCards} cards (${items.length} unique)`
+              : "No cards yet"}
+          </p>
           {items.length > 0 && (
             <Button
               variant="ghost"
               size="sm"
               onClick={handleClearClick}
-              className="h-8 text-red-400 hover:bg-red-950/30 hover:text-red-300"
+              className="h-7 px-2 text-xs text-red-400 hover:bg-red-950/30 hover:text-red-300"
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className="mr-1 h-3.5 w-3.5" />
+              Clear
             </Button>
           )}
         </div>
@@ -192,7 +188,7 @@ export function DeckSidebar({ variant = "desktop" }: DeckSidebarProps) {
       {/* Footer */}
       <div
         className={cn(
-          "flex-shrink-0 border-t border-slate-800",
+          "shrink-0 border-t border-slate-800",
           isMobile
             ? "p-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))]"
             : "p-4"

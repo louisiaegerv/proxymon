@@ -34,8 +34,6 @@ export async function searchCards(
   query: string,
   options?: {
     setId?: string
-    type?: string
-    rarity?: string
   }
 ) {
   try {
@@ -82,7 +80,17 @@ export async function searchCards(
       })
     }
 
-    return cards || []
+    // Limit results to prevent memory issues (e.g., searching "Pikachu" returns hundreds of cards)
+    const MAX_RESULTS = 50
+    const limitedCards = cards ? cards.slice(0, MAX_RESULTS) : []
+
+    if (cards && cards.length > MAX_RESULTS) {
+      console.log(
+        `[TCGdex API] Results limited from ${cards.length} to ${MAX_RESULTS}`
+      )
+    }
+
+    return limitedCards
   } catch (error) {
     console.error("Error searching cards:", error)
     return []
@@ -207,10 +215,34 @@ export async function findCard(
       const cards = await tcgdex.card.list(queryBuilder)
 
       if (cards && cards.length > 0) {
+        console.log(`All Results from name search`, cards)
+
+        // Sort results to prioritize exact matches first
+        const lowerName = name.toLowerCase()
+        const sortedCards = cards.sort((a, b) => {
+          const aName = (a.name || "").toLowerCase()
+          const bName = (b.name || "").toLowerCase()
+          const aExact = aName === lowerName
+          const bExact = bName === lowerName
+          const aStartsWith = aName.startsWith(lowerName)
+          const bStartsWith = bName.startsWith(lowerName)
+
+          // Exact matches come first
+          if (aExact && !bExact) return -1
+          if (bExact && !aExact) return 1
+
+          // Then starts with
+          if (aStartsWith && !bStartsWith) return -1
+          if (bStartsWith && !aStartsWith) return 1
+
+          // Otherwise maintain original order
+          return 0
+        })
+
         console.log(
-          `[TCGdex API] Found card with Priority 3: ${cards[0].name} (${cards[0].id})`
+          `[TCGdex API] Found card with Priority 3: ${sortedCards[0].name} (${sortedCards[0].id})`
         )
-        return cards[0]
+        return sortedCards[0]
       }
     }
 

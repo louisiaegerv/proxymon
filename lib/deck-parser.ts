@@ -5,6 +5,23 @@ import setCodeMappings from "./set-code-mappings.json"
 // Set code mapping from Limitless to TCGDex
 const LIMITLESS_TO_TCGDEX: Record<string, string> = setCodeMappings
 
+// Set of valid Limitless set codes for validation
+const VALID_SET_CODES = new Set(Object.keys(LIMITLESS_TO_TCGDEX))
+
+// Also include TCGDex set IDs as valid set codes
+const VALID_TCGDEX_SET_IDS = new Set(Object.values(LIMITLESS_TO_TCGDEX))
+
+/**
+ * Check if a string is a valid set code
+ */
+function isValidSetCode(code: string): boolean {
+  const upperCode = code.toUpperCase()
+  return (
+    VALID_SET_CODES.has(upperCode) ||
+    VALID_TCGDEX_SET_IDS.has(code.toLowerCase())
+  )
+}
+
 // Extended card type that includes fields returned by Query
 interface QueriedCard extends CardResume {
   name: string
@@ -51,7 +68,7 @@ export function parseDeckList(deckText: string): DeckListItem[] {
 
     // Skip category headers (Pokemon, Trainer, Energy, etc.)
     if (
-      /^(pok[ée]mon|trainer|energy|item|supporter|stadium|tool|pokémon tool)$/i.test(
+      /^(pok[ée]mon|trainer|item|supporter|stadium|tool|pokémon tool)$/i.test(
         trimmed
       )
     ) {
@@ -77,21 +94,32 @@ export function parseDeckList(deckText: string): DeckListItem[] {
 
     // Check if there's a set code and card number at the end
     // Pattern: "... OBF 26" or "... OBF026" or "... 026"
+    // First try to match with set code validation
     const setNumberMatch = rest.match(
-      /^(.*?)\s+([A-Za-z0-9.]+)\s*(\d{1,3}|[A-Z])$/i
+      /^(.*?)\s+([A-Za-z0-9.]+)\s+(\d{1,3}|[A-Z])$/i
     )
     const numberOnlyMatch = rest.match(/^(.*?)\s+(\d{1,3})$/)
 
     if (setNumberMatch) {
       const rawSetCode = setNumberMatch[2].toUpperCase()
-      // Map Limitless set code to TCGDex set code if available
-      const mappedSetCode = LIMITLESS_TO_TCGDEX[rawSetCode] || rawSetCode
-      items.push({
-        quantity,
-        cardName: setNumberMatch[1].trim(),
-        setCode: mappedSetCode.toLowerCase(),
-        cardNumber: setNumberMatch[3],
-      })
+
+      // Validate that the extracted code is actually a known set code
+      if (isValidSetCode(rawSetCode)) {
+        // Map Limitless set code to TCGDex set code if available
+        const mappedSetCode = LIMITLESS_TO_TCGDEX[rawSetCode] || rawSetCode
+        items.push({
+          quantity,
+          cardName: setNumberMatch[1].trim(),
+          setCode: mappedSetCode.toLowerCase(),
+          cardNumber: setNumberMatch[3],
+        })
+      } else {
+        // Not a valid set code - treat entire string as card name
+        items.push({
+          quantity,
+          cardName: rest,
+        })
+      }
     } else if (numberOnlyMatch) {
       items.push({
         quantity,

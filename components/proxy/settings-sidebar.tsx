@@ -53,12 +53,13 @@ export function SettingsSidebar() {
   const {
     settings,
     updateSettings,
-    items,
+    getActiveDeck,
     getTotalCards,
     isGenerating,
     setIsGenerating,
     setGenerationProgress,
   } = useProxyList()
+  const items = getActiveDeck()?.items ?? []
   const [copied, setCopied] = useState(false)
   const [openSections, setOpenSections] = useState<string[]>([
     "page-layout",

@@ -79,6 +79,14 @@ export interface ProxyItem {
   variant: "normal" | "holo" | "reverse"
 }
 
+export interface Deck {
+  id: string
+  name: string
+  items: ProxyItem[]
+  createdAt: number
+  updatedAt: number
+}
+
 export type BleedMethod = "replicate" | "mirror" | "edge"
 
 export interface PrintSettings {

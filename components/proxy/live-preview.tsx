@@ -68,7 +68,7 @@ export function LivePreview({
   containerWidth,
 }: LivePreviewProps) {
   const {
-    items,
+    getActiveDeck,
     getTotalCards,
     settings,
     reorderItems,
@@ -86,6 +86,7 @@ export function LivePreview({
     setIsGenerating,
     setGenerationProgress,
   } = useProxyList()
+  const items = getActiveDeck()?.items ?? []
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
   const [zoomIndex, setZoomIndex] = useState(2)
