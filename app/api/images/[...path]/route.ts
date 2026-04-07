@@ -1,8 +1,8 @@
 /**
- * Image Serving API Route (Development)
+ * Image Serving API Route
  * 
- * Serves card images from the local filesystem in development mode.
- * In production, images are served directly from R2/CDN.
+ * - Development: Serves card images from local filesystem
+ * - Production: Redirects to presigned R2 URLs (private bucket)
  * 
  * Route: /api/images/{folder}/{filename}.webp
  * Example: /api/images/151_MEW/Abra_MEW_063_md.webp
@@ -11,15 +11,40 @@
 import { readFile } from 'fs/promises'
 import { NextRequest } from 'next/server'
 import path from 'path'
+import { getSignedImageUrl } from '@/lib/r2'
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
 ) {
-  // Get path segments
   const { path: pathSegments } = await params
+  const imageSource = process.env.IMAGE_SOURCE || 'local'
   
-  // Validate environment
+  // Production: Redirect to signed R2 URL
+  if (imageSource === 'r2') {
+    try {
+      // Build the object key from path segments
+      const objectKey = pathSegments.join('/')
+      
+      // Generate signed URL (1 hour expiration)
+      const signedUrl = await getSignedImageUrl(objectKey, 3600)
+      
+      // Redirect to the signed URL
+      return Response.redirect(signedUrl, 302)
+      
+    } catch (error) {
+      console.error('Failed to generate signed URL:', error)
+      return new Response(
+        JSON.stringify({ 
+          error: 'Failed to generate image URL',
+          message: error instanceof Error ? error.message : 'Unknown error'
+        }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+  }
+  
+  // Development: Serve from local filesystem
   const basePath = process.env.LOCAL_IMAGES_PATH
   
   if (!basePath) {
@@ -32,7 +57,7 @@ export async function GET(
   // Build file path
   const filePath = path.join(basePath, ...pathSegments)
   
-  // Security check: ensure path is within base directory (prevent directory traversal)
+  // Security check: ensure path is within base directory
   const resolvedPath = path.resolve(filePath)
   const resolvedBase = path.resolve(basePath)
   
@@ -52,7 +77,6 @@ export async function GET(
   }
   
   try {
-    // Read and serve the file
     const fileBuffer = await readFile(resolvedPath)
     
     return new Response(fileBuffer, {
@@ -63,7 +87,6 @@ export async function GET(
       }
     })
   } catch (error) {
-    // File not found or other error
     console.error(`Image not found: ${filePath}`, error)
     
     return new Response(

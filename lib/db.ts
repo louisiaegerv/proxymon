@@ -1,42 +1,70 @@
-import 'server-only'
-
 /**
  * Database utilities for card lookups
  * 
- * This module provides functions to search and retrieve card data
- * from the local SQLite database.
+ * Hybrid mode:
+ * - Production (Vercel): Uses Turso edge database
+ * - Local development: Uses local SQLite file via sql.js
  * 
- * NOTE: This module uses Node.js APIs and can only be imported in:
+ * This module can only be imported in:
  * - Server Components
  * - API Routes (Route Handlers)
  * - Server Actions
  */
 
+import { createClient, Client as TursoClient } from '@libsql/client/web'
 import initSqlJs, { type SqlJsStatic, type Database as SqlJsDatabase } from 'sql.js'
 import fs from 'fs'
 import path from 'path'
 import { SET_MAPPINGS } from './set-mappings'
 
+// Turso client (production)
+let tursoClient: TursoClient | null = null
+
+// Local SQLite (development)
 let SQL: SqlJsStatic | null = null
-let db: SqlJsDatabase | null = null
+let localDb: SqlJsDatabase | null = null
 
 /**
- * Initialize and get database instance
+ * Check if running in production (Turso mode)
  */
-async function getDbAsync(): Promise<SqlJsDatabase> {
-  if (db) return db
+function isTursoMode(): boolean {
+  return !!process.env.TURSO_DATABASE_URL && !!process.env.TURSO_AUTH_TOKEN
+}
+
+/**
+ * Get Turso client (production)
+ */
+function getTursoClient(): TursoClient {
+  if (tursoClient) return tursoClient
+  
+  if (!process.env.TURSO_DATABASE_URL) {
+    throw new Error('TURSO_DATABASE_URL is not set')
+  }
+  if (!process.env.TURSO_AUTH_TOKEN) {
+    throw new Error('TURSO_AUTH_TOKEN is not set')
+  }
+  
+  tursoClient = createClient({
+    url: process.env.TURSO_DATABASE_URL,
+    authToken: process.env.TURSO_AUTH_TOKEN,
+  })
+  
+  return tursoClient
+}
+
+/**
+ * Initialize and get local SQLite database (development)
+ */
+async function getLocalDbAsync(): Promise<SqlJsDatabase> {
+  if (localDb) return localDb
   
   if (!SQL) {
-    // Configure sql.js to find the wasm file correctly
     SQL = await initSqlJs({
       locateFile: (file) => {
-        // In development, look in node_modules
-        // In production, the wasm should be in the same directory
         const wasmPath = path.join(process.cwd(), 'node_modules', 'sql.js', 'dist', file)
         if (fs.existsSync(wasmPath)) {
           return wasmPath
         }
-        // Fallback to CDN if local file not found
         return `https://sql.js.org/dist/${file}`
       }
     })
@@ -49,48 +77,80 @@ async function getDbAsync(): Promise<SqlJsDatabase> {
   }
   
   const filebuffer = fs.readFileSync(dbPath)
-  db = new SQL.Database(filebuffer)
+  localDb = new SQL.Database(filebuffer)
   
-  return db
+  return localDb
 }
 
-/**
- * Synchronous version for API routes (loads DB on first call)
- * Note: In production, consider caching this
- */
-function getDbSync(): SqlJsDatabase {
-  if (db) return db
-  
-  // For sync contexts, we need to have pre-initialized
-  throw new Error('Database not initialized. Call initDb() first or use async functions.')
-}
-
-// Initialize on module load (for API routes)
+// Initialize on module load (for local dev API routes)
 let dbInitialized = false
 let dbInitPromise: Promise<void> | null = null
 
-async function ensureDb(): Promise<SqlJsDatabase> {
-  if (dbInitialized && db) return db
+async function ensureLocalDb(): Promise<SqlJsDatabase> {
+  if (dbInitialized && localDb) return localDb
   
   if (!dbInitPromise) {
-    dbInitPromise = getDbAsync().then(d => {
-      db = d
+    dbInitPromise = getLocalDbAsync().then(d => {
+      localDb = d
       dbInitialized = true
     })
   }
   
   await dbInitPromise
-  return db!
+  return localDb!
+}
+
+// ============================================================================
+// Database Operations (Hybrid)
+// ============================================================================
+
+/**
+ * Execute a query and return rows
+ */
+async function executeQuery<T>(
+  sql: string,
+  args: (string | number)[]
+): Promise<T[]> {
+  if (isTursoMode()) {
+    // Turso mode (production)
+    const db = getTursoClient()
+    const result = await db.execute({ sql, args })
+    return result.rows as T[]
+  } else {
+    // Local SQLite mode (development)
+    const db = await ensureLocalDb()
+    const result = db.exec(sql, args)
+    
+    if (!result.length) return []
+    
+    const columns = result[0].columns
+    return result[0].values.map(row => {
+      const obj: Record<string, unknown> = {}
+      columns.forEach((col, i) => {
+        obj[col] = row[i]
+      })
+      return obj as T
+    })
+  }
 }
 
 /**
+ * Execute a query and return first row or undefined
+ */
+async function executeQueryOne<T>(
+  sql: string,
+  args: (string | number)[]
+): Promise<T | undefined> {
+  const rows = await executeQuery<T>(sql, args)
+  return rows[0]
+}
+
+// ============================================================================
+// Search Functions
+// ============================================================================
+
+/**
  * Parse search query with comma delimiter support
- * 
- * Examples:
- *   "Pikachu" -> { cardName: "Pikachu" }
- *   "OBF" -> { setCode: "OBF" }
- *   "Pikachu,Jungle" -> { cardName: "Pikachu", setName: "Jungle" }
- *   "Charizard, OBF" -> { cardName: "Charizard", setCode: "OBF" }
  */
 export function parseSearchQuery(query: string): {
   cardName?: string
@@ -143,19 +203,12 @@ export function parseSearchQuery(query: string): {
 
 /**
  * Universal search with comma delimiter support
- * 
- * Search priority:
- * 1. Comma delimiter: card + set
- * 2. Set code: uppercase 2-4 chars
- * 3. Set name: exact match
- * 4. Card name (default)
  */
 export async function searchCards(query: string, limit = 50): Promise<CardResult[]> {
-  const database = await ensureDb()
   const parsed = parseSearchQuery(query)
   
   let sql: string
-  let params: (string | number)[]
+  let args: (string | number)[]
   
   // Card name + set specified
   if (parsed.cardName && (parsed.setCode || parsed.setName)) {
@@ -167,7 +220,7 @@ export async function searchCards(query: string, limit = 50): Promise<CardResult
         ORDER BY CAST(local_id AS INTEGER)
         LIMIT ?
       `
-      params = [
+      args = [
         `%${parsed.cardName.toLowerCase()}%`,
         parsed.setCode,
         limit
@@ -180,7 +233,7 @@ export async function searchCards(query: string, limit = 50): Promise<CardResult
         ORDER BY CAST(local_id AS INTEGER)
         LIMIT ?
       `
-      params = [
+      args = [
         `%${parsed.cardName.toLowerCase()}%`,
         `%${parsed.setName?.toLowerCase() || ''}%`,
         limit
@@ -195,7 +248,7 @@ export async function searchCards(query: string, limit = 50): Promise<CardResult
       ORDER BY CAST(local_id AS INTEGER)
       LIMIT ?
     `
-    params = [parsed.setCode, limit]
+    args = [parsed.setCode, limit]
   }
   // Just set name
   else if (parsed.setName) {
@@ -205,9 +258,9 @@ export async function searchCards(query: string, limit = 50): Promise<CardResult
       ORDER BY CAST(local_id AS INTEGER)
       LIMIT ?
     `
-    params = [`%${parsed.setName.toLowerCase()}%`, limit]
+    args = [`%${parsed.setName.toLowerCase()}%`, limit]
   }
-  // General search across all fields (card name default)
+  // General search across all fields
   else {
     const term = parsed.cardName?.toLowerCase() || ''
     sql = `
@@ -224,7 +277,7 @@ export async function searchCards(query: string, limit = 50): Promise<CardResult
         name
       LIMIT ?
     `
-    params = [
+    args = [
       `%${term}%`,
       `%${term}%`,
       `%${term}%`,
@@ -234,93 +287,42 @@ export async function searchCards(query: string, limit = 50): Promise<CardResult
     ]
   }
   
-  const result = database.exec(sql, params)
-  
-  if (!result.length) return []
-  
-  // Convert result to objects
-  const columns = result[0].columns
-  return result[0].values.map(row => {
-    const obj: Record<string, string> = {}
-    columns.forEach((col, i) => {
-      obj[col] = String(row[i])
-    })
-    return obj as unknown as CardResult
-  })
+  const rows = await executeQuery<CardRow>(sql, args)
+  return rows.map(rowToCardResult)
 }
 
 /**
  * Get all cards in a specific set
  */
 export async function getCardsBySet(setCode: string): Promise<CardResult[]> {
-  const database = await ensureDb()
-  
-  const result = database.exec(`
+  const sql = `
     SELECT * FROM cards 
     WHERE set_code = ?
     ORDER BY CAST(local_id AS INTEGER)
-  `, [setCode])
-  
-  if (!result.length) return []
-  
-  const columns = result[0].columns
-  return result[0].values.map(row => {
-    const obj: Record<string, string> = {}
-    columns.forEach((col, i) => {
-      obj[col] = String(row[i])
-    })
-    return obj as unknown as CardResult
-  })
+  `
+  const rows = await executeQuery<CardRow>(sql, [setCode])
+  return rows.map(rowToCardResult)
 }
 
 /**
  * Find a specific card by set code and local ID
- * Used for deck imports
  */
 export async function findCard(
   setCode: string,
   localId: string
 ): Promise<CardResult | undefined> {
-  const database = await ensureDb()
-  
-  const result = database.exec(
-    'SELECT * FROM cards WHERE set_code = ? AND local_id = ?',
-    [setCode, localId]
-  )
-  
-  if (!result.length || !result[0].values.length) return undefined
-  
-  const columns = result[0].columns
-  const row = result[0].values[0]
-  const obj: Record<string, string> = {}
-  columns.forEach((col, i) => {
-    obj[col] = String(row[i])
-  })
-  
-  return obj as unknown as CardResult
+  const sql = 'SELECT * FROM cards WHERE set_code = ? AND local_id = ?'
+  const row = await executeQueryOne<CardRow>(sql, [setCode, localId])
+  return row ? rowToCardResult(row) : undefined
 }
 
 /**
  * Find a card by its unique ID
  */
 export async function findCardById(id: string): Promise<CardResult | undefined> {
-  const database = await ensureDb()
-  
-  const result = database.exec(
-    'SELECT * FROM cards WHERE id = ?',
-    [id]
-  )
-  
-  if (!result.length || !result[0].values.length) return undefined
-  
-  const columns = result[0].columns
-  const row = result[0].values[0]
-  const obj: Record<string, string> = {}
-  columns.forEach((col, i) => {
-    obj[col] = String(row[i])
-  })
-  
-  return obj as unknown as CardResult
+  const sql = 'SELECT * FROM cards WHERE id = ?'
+  const row = await executeQueryOne<CardRow>(sql, [id])
+  return row ? rowToCardResult(row) : undefined
 }
 
 /**
@@ -328,85 +330,66 @@ export async function findCardById(id: string): Promise<CardResult | undefined> 
  */
 function normalizeCardName(name: string): string {
   return name.toLowerCase()
-    .replace(/'/g, '')  // Remove apostrophes (Boss's -> Bosss)
-    .replace(/[^a-z0-9\s]/g, '')  // Remove other special chars
+    .replace(/'/g, '')
+    .replace(/[^a-z0-9\s]/g, '')
     .trim()
 }
 
 /**
  * Find a card for deck imports with flexible matching
- * Priority: name + setCode + localId → name + setCode → name only
- * 
- * This replaces the TCGDex findCard for deck imports
  */
 export async function findCardForDeck(
   name: string,
   setCode?: string,
   localId?: string
 ): Promise<CardResult | null> {
-  const database = await ensureDb()
-  
-  console.log(`[Local DB] Finding card: "${name}" (set: ${setCode}, localId: ${localId})`)
+  const dbMode = isTursoMode() ? 'Turso' : 'Local'
+  console.log(`[${dbMode} DB] Finding card: "${name}" (set: ${setCode}, localId: ${localId})`)
   
   // Priority 1: Search by name + setCode + localId
   if (name && setCode && localId) {
-    // Normalize inputs
     const normalizedName = name.toLowerCase()
     const normalizedNameNoApostrophe = normalizeCardName(name)
     const normalizedSetCode = setCode.toUpperCase()
     
     // Try exact match first
-    let result = database.exec(
-      `SELECT * FROM cards 
-       WHERE LOWER(name) = ? 
-         AND set_code = ? 
-         AND local_id = ?`,
-      [normalizedName, normalizedSetCode, localId]
-    )
+    let sql = `SELECT * FROM cards 
+               WHERE LOWER(name) = ? 
+                 AND set_code = ? 
+                 AND local_id = ?`
+    let row = await executeQueryOne<CardRow>(sql, [normalizedName, normalizedSetCode, localId])
     
-    // Try with apostrophe removed (Boss's -> Bosss)
-    if (!result.length || !result[0].values.length) {
-      result = database.exec(
-        `SELECT * FROM cards 
-         WHERE REPLACE(LOWER(name), '''', '') = ? 
-           AND set_code = ? 
-           AND local_id = ?`,
-        [normalizedNameNoApostrophe, normalizedSetCode, localId]
-      )
+    // Try with apostrophe removed
+    if (!row) {
+      sql = `SELECT * FROM cards 
+             WHERE REPLACE(LOWER(name), '''', '') = ? 
+               AND set_code = ? 
+               AND local_id = ?`
+      row = await executeQueryOne<CardRow>(sql, [normalizedNameNoApostrophe, normalizedSetCode, localId])
     }
     
-    // Try partial name match if exact fails
-    if (!result.length || !result[0].values.length) {
-      result = database.exec(
-        `SELECT * FROM cards 
-         WHERE LOWER(name) LIKE ? 
-           AND set_code = ? 
-           AND local_id = ?`,
-        [`%${normalizedName}%`, normalizedSetCode, localId]
-      )
+    // Try partial name match
+    if (!row) {
+      sql = `SELECT * FROM cards 
+             WHERE LOWER(name) LIKE ? 
+               AND set_code = ? 
+               AND local_id = ?`
+      row = await executeQueryOne<CardRow>(sql, [`%${normalizedName}%`, normalizedSetCode, localId])
     }
     
-    // Try with padded localId (e.g., "95" → "095")
-    if ((!result.length || !result[0].values.length) && /^\d+$/.test(localId)) {
+    // Try with padded localId
+    if (!row && /^\d+$/.test(localId)) {
       const paddedLocalId = localId.padStart(3, '0')
-      result = database.exec(
-        `SELECT * FROM cards 
-         WHERE (LOWER(name) LIKE ? OR REPLACE(LOWER(name), '''', '') = ?)
-           AND set_code = ? 
-           AND local_id = ?`,
-        [`%${normalizedName}%`, normalizedNameNoApostrophe, normalizedSetCode, paddedLocalId]
-      )
+      sql = `SELECT * FROM cards 
+             WHERE (LOWER(name) LIKE ? OR REPLACE(LOWER(name), '''', '') = ?)
+               AND set_code = ? 
+               AND local_id = ?`
+      row = await executeQueryOne<CardRow>(sql, [`%${normalizedName}%`, normalizedNameNoApostrophe, normalizedSetCode, paddedLocalId])
     }
     
-    if (result.length && result[0].values.length) {
-      const columns = result[0].columns
-      const row = result[0].values[0]
-      const obj: Record<string, string> = {}
-      columns.forEach((col, i) => {
-        obj[col] = String(row[i])
-      })
-      console.log(`[Local DB] Found with Priority 1: ${obj.name} (${obj.set_code} ${obj.local_id})`)
-      return obj as unknown as CardResult
+    if (row) {
+      console.log(`[${dbMode} DB] Found with Priority 1: ${row.name} (${row.set_code} ${row.local_id})`)
+      return rowToCardResult(row)
     }
   }
   
@@ -416,28 +399,26 @@ export async function findCardForDeck(
     const normalizedNameNoApostrophe = normalizeCardName(name)
     const normalizedSetCode = setCode.toUpperCase()
     
-    const result = database.exec(
-      `SELECT * FROM cards 
-       WHERE (LOWER(name) LIKE ? OR REPLACE(LOWER(name), '''', '') = ?)
-         AND set_code = ?
-       ORDER BY CASE 
-         WHEN LOWER(name) = ? THEN 0 
-         WHEN REPLACE(LOWER(name), '''', '') = ? THEN 1
-         ELSE 2 
-       END
-       LIMIT 1`,
-      [`%${normalizedName}%`, normalizedNameNoApostrophe, normalizedSetCode, normalizedName, normalizedNameNoApostrophe]
-    )
+    const sql = `SELECT * FROM cards 
+                 WHERE (LOWER(name) LIKE ? OR REPLACE(LOWER(name), '''', '') = ?)
+                   AND set_code = ?
+                 ORDER BY CASE 
+                   WHEN LOWER(name) = ? THEN 0 
+                   WHEN REPLACE(LOWER(name), '''', '') = ? THEN 1
+                   ELSE 2 
+                 END
+                 LIMIT 1`
+    const row = await executeQueryOne<CardRow>(sql, [
+      `%${normalizedName}%`, 
+      normalizedNameNoApostrophe, 
+      normalizedSetCode, 
+      normalizedName, 
+      normalizedNameNoApostrophe
+    ])
     
-    if (result.length && result[0].values.length) {
-      const columns = result[0].columns
-      const row = result[0].values[0]
-      const obj: Record<string, string> = {}
-      columns.forEach((col, i) => {
-        obj[col] = String(row[i])
-      })
-      console.log(`[Local DB] Found with Priority 2: ${obj.name} (${obj.set_code} ${obj.local_id})`)
-      return obj as unknown as CardResult
+    if (row) {
+      console.log(`[${dbMode} DB] Found with Priority 2: ${row.name} (${row.set_code} ${row.local_id})`)
+      return rowToCardResult(row)
     }
   }
   
@@ -446,33 +427,31 @@ export async function findCardForDeck(
     const normalizedName = name.toLowerCase()
     const normalizedNameNoApostrophe = normalizeCardName(name)
     
-    const result = database.exec(
-      `SELECT * FROM cards 
-       WHERE LOWER(name) LIKE ? OR REPLACE(LOWER(name), '''', '') LIKE ?
-       ORDER BY 
-         CASE WHEN LOWER(name) = ? THEN 0 
-              WHEN REPLACE(LOWER(name), '''', '') = ? THEN 1
-              WHEN LOWER(name) LIKE ? THEN 2 
-              ELSE 3 
-         END,
-         name
-       LIMIT 1`,
-      [`%${normalizedName}%`, `%${normalizedNameNoApostrophe}%`, normalizedName, normalizedNameNoApostrophe, `${normalizedName}%`]
-    )
+    const sql = `SELECT * FROM cards 
+                 WHERE LOWER(name) LIKE ? OR REPLACE(LOWER(name), '''', '') LIKE ?
+                 ORDER BY 
+                   CASE WHEN LOWER(name) = ? THEN 0 
+                        WHEN REPLACE(LOWER(name), '''', '') = ? THEN 1
+                        WHEN LOWER(name) LIKE ? THEN 2 
+                        ELSE 3 
+                   END,
+                   name
+                 LIMIT 1`
+    const row = await executeQueryOne<CardRow>(sql, [
+      `%${normalizedName}%`, 
+      `%${normalizedNameNoApostrophe}%`, 
+      normalizedName, 
+      normalizedNameNoApostrophe, 
+      `${normalizedName}%`
+    ])
     
-    if (result.length && result[0].values.length) {
-      const columns = result[0].columns
-      const row = result[0].values[0]
-      const obj: Record<string, string> = {}
-      columns.forEach((col, i) => {
-        obj[col] = String(row[i])
-      })
-      console.log(`[Local DB] Found with Priority 3: ${obj.name} (${obj.set_code} ${obj.local_id})`)
-      return obj as unknown as CardResult
+    if (row) {
+      console.log(`[${dbMode} DB] Found with Priority 3: ${row.name} (${row.set_code} ${row.local_id})`)
+      return rowToCardResult(row)
     }
   }
   
-  console.log(`[Local DB] Card not found: "${name}"`)
+  console.log(`[${dbMode} DB] Card not found: "${name}"`)
   return null
 }
 
@@ -480,23 +459,52 @@ export async function findCardForDeck(
  * Get all available sets
  */
 export async function getAllSets(): Promise<SetInfo[]> {
-  const database = await ensureDb()
-  
-  const result = database.exec(`
+  const sql = `
     SELECT set_code, set_name, COUNT(*) as card_count
     FROM cards
     GROUP BY set_code
     ORDER BY set_name
-  `)
-  
-  if (!result.length) return []
-  
-  const columns = result[0].columns
-  return result[0].values.map(row => ({
-    code: String(row[0]),
-    name: String(row[1]),
-    cardCount: Number(row[2])
+  `
+  const rows = await executeQuery<SetRow>(sql, [])
+  return rows.map(row => ({
+    code: String(row.set_code),
+    name: String(row.set_name),
+    cardCount: Number(row.card_count)
   }))
+}
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
+interface CardRow {
+  id: string | unknown
+  name: string | unknown
+  set_code: string | unknown
+  set_name: string | unknown
+  local_id: string | unknown
+  folder_name: string | unknown
+  variants: string | unknown
+  sizes: string | unknown
+}
+
+interface SetRow {
+  set_code: string | unknown
+  set_name: string | unknown
+  card_count: number | unknown
+}
+
+function rowToCardResult(row: CardRow): CardResult {
+  return {
+    id: String(row.id),
+    name: String(row.name),
+    set_code: String(row.set_code),
+    set_name: String(row.set_name),
+    local_id: String(row.local_id),
+    folder_name: String(row.folder_name),
+    variants: String(row.variants),
+    sizes: String(row.sizes),
+  }
 }
 
 // ============================================================================
@@ -504,14 +512,14 @@ export async function getAllSets(): Promise<SetInfo[]> {
 // ============================================================================
 
 export interface CardResult {
-  id: string           // "MEW-063"
-  name: string         // "Abra"
-  set_code: string     // "MEW"
-  set_name: string     // "151"
-  local_id: string     // "063"
-  folder_name: string  // "151_MEW"
-  variants: string     // "normal,holo"
-  sizes: string        // "sm,md,lg,xl"
+  id: string
+  name: string
+  set_code: string
+  set_name: string
+  local_id: string
+  folder_name: string
+  variants: string
+  sizes: string
 }
 
 export interface SetInfo {
