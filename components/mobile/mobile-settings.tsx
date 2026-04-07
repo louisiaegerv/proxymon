@@ -748,17 +748,19 @@ export function MobileSettings() {
 
             {/* Download HTML Button */}
             <Button
-              className="h-12 w-full border-emerald-700 bg-emerald-900/50 text-emerald-400 hover:bg-emerald-900"
-              variant="outline"
+              className="h-12 w-full bg-blue-600 text-white hover:bg-blue-500"
+              // className="h-12 w-full border-emerald-700 bg-emerald-900/50 text-emerald-400 hover:bg-emerald-900"
+              // variant="outline"
               disabled={items.length === 0 || isProcessingHtml}
               onClick={handleGenerateHTML}
             >
-              <FileCode className="mr-2 h-5 w-5" />
-              Export HTML
+              <Printer className="mr-2 h-5 w-5" />
+              {/* <FileCode className="mr-2 h-5 w-5" /> */}
+              Export 
             </Button>
 
             {/* Download PDF Button */}
-            <Button
+            {/* <Button
               className="h-12 w-full bg-blue-600 text-white hover:bg-blue-500"
               disabled={items.length === 0 || isGenerating}
               onClick={handleGeneratePDF}
@@ -774,7 +776,7 @@ export function MobileSettings() {
                   Download PDF
                 </>
               )}
-            </Button>
+            </Button> */}
 
             {items.length > 0 && (
               <p className="text-center text-xs text-slate-500">

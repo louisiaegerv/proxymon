@@ -720,16 +720,19 @@ export function SettingsSidebar() {
 
         {/* Download HTML Button */}
         <Button
-          className="w-full border-emerald-700 bg-emerald-900/50 text-emerald-400 hover:bg-emerald-900"
-          variant="outline"
+          className="w-full bg-blue-600 text-white hover:bg-blue-500"
+          // className="w-full border-emerald-700 bg-emerald-900/50 text-emerald-400 hover:bg-emerald-900"
+          // variant="outline"
           disabled={items.length === 0 || isProcessingHtml}
           onClick={handleGenerateHTML}
         >
-          <FileCode className="mr-2 h-4 w-4" />
-          Export HTML
+          <Printer className="mr-2 h-4 w-4" />
+          {/* <FileCode className="mr-2 h-4 w-4" /> */}
+          Export
         </Button>
 
         {/* Download PDF Button */}
+        {/*
         <Button
           className="w-full bg-blue-600 text-white hover:bg-blue-500"
           size="lg"
@@ -748,6 +751,7 @@ export function SettingsSidebar() {
             </>
           )}
         </Button>
+        */}
         {items.length > 0 && (
           <p className="mt-2 text-center text-xs text-slate-500">
             {totalCards} cards ready
