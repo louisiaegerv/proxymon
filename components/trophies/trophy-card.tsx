@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion"
 import Image from "next/image"
 import { Lock } from "lucide-react"
@@ -57,11 +57,13 @@ function TiltCard({
   isUnlocked,
   rarity,
   onClick,
+  onHoverChange,
 }: {
   children: React.ReactNode
   isUnlocked: boolean
   rarity: TrophyRarity
   onClick?: () => void
+  onHoverChange?: (hovered: boolean) => void
 }) {
   const cardRef = useRef<HTMLDivElement>(null)
   const config = RARITY_CONFIG[rarity]
@@ -85,9 +87,14 @@ function TiltCard({
     mouseY.set(y)
   }
 
+  const handleMouseEnter = () => {
+    onHoverChange?.(true)
+  }
+
   const handleMouseLeave = () => {
     mouseX.set(0)
     mouseY.set(0)
+    onHoverChange?.(false)
   }
 
   return (
@@ -99,6 +106,7 @@ function TiltCard({
         transformStyle: "preserve-3d",
       }}
       onMouseMove={handleMouseMove}
+      onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onClick={onClick}
     >
@@ -140,6 +148,86 @@ function TiltCard({
   )
 }
 
+function TrophyMedia({
+  trophy,
+  isUnlocked,
+  isHovered,
+}: {
+  trophy: TrophyDefinition
+  isUnlocked: boolean
+  isHovered: boolean
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const hasVideo = isUnlocked && trophy.video
+
+  useEffect(() => {
+    if (!videoRef.current) return
+    if (isHovered && hasVideo) {
+      videoRef.current.play().catch(() => {
+        // Autoplay blocked — image remains visible
+      })
+    } else {
+      videoRef.current.pause()
+    }
+  }, [isHovered, hasVideo])
+
+  if (!isUnlocked) {
+    return (
+      <div className="relative flex h-full w-full flex-col items-center justify-center rounded-lg bg-slate-900/50">
+        <div className="relative flex h-full w-full items-center justify-center opacity-20">
+          <Image
+            src={trophy.image}
+            alt="?"
+            fill
+            className="object-contain grayscale blur-[1px]"
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+          />
+          <div className="absolute inset-0 bg-slate-950/70" />
+        </div>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <Lock className="h-8 w-8 text-slate-500/50" />
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="relative h-full w-full overflow-hidden rounded-lg">
+      {/* Base image — always rendered as fallback */}
+      <Image
+        src={trophy.image}
+        alt={trophy.name}
+        fill
+        unoptimized
+        className={cn(
+          "object-contain transition-opacity duration-300",
+          hasVideo && isHovered ? "opacity-0" : "opacity-100"
+        )}
+        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+      />
+
+      {/* Hover video (thumbnail = 360p) */}
+      {hasVideo && (
+        <video
+          ref={videoRef}
+          src={trophy.video!.thumbnail}
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          className={cn(
+            "absolute inset-0 h-full w-full object-contain transition-opacity duration-300",
+            isHovered ? "opacity-100" : "opacity-0"
+          )}
+        />
+      )}
+
+      {/* Shine sweep effect on hover */}
+      <div className="absolute inset-0 bg-linear-to-tr from-transparent via-white/10 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+    </div>
+  )
+}
+
 export function TrophyCard({
   trophy,
   isUnlocked,
@@ -149,6 +237,7 @@ export function TrophyCard({
   onClick,
 }: TrophyCardProps) {
   const [showDetails, setShowDetails] = useState(false)
+  const [isHovered, setIsHovered] = useState(false)
   const config = RARITY_CONFIG[trophy.rarity]
 
   const handleClick = () => {
@@ -166,6 +255,7 @@ export function TrophyCard({
       isUnlocked={isUnlocked}
       rarity={trophy.rarity}
       onClick={handleClick}
+      onHoverChange={setIsHovered}
     >
       <div className="relative aspect-[63/88] w-full overflow-hidden rounded-lg">
         {/* Background glow for unlocked */}
@@ -182,16 +272,7 @@ export function TrophyCard({
         <div className="relative h-full w-full p-2">
           {isUnlocked ? (
             <div className="relative h-full w-full overflow-hidden rounded-lg">
-              <Image
-                src={trophy.image}
-                alt={trophy.name}
-                fill
-                className="object-contain"
-                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-              />
-
-              {/* Shine sweep effect on hover */}
-              <div className="absolute inset-0 bg-linear-to-tr from-transparent via-white/10 to-transparent opacity-0 transition-opacity duration-500 hover:opacity-100" />
+              <TrophyMedia trophy={trophy} isUnlocked={isUnlocked} isHovered={isHovered} />
 
               {/* Rarity badge */}
               <div
@@ -211,11 +292,12 @@ export function TrophyCard({
           ) : (
             <div className="relative flex h-full w-full flex-col items-center justify-center rounded-lg bg-slate-900/50">
               {/* Silhouette placeholder */}
-              <div className="relative flex h-3/4 w-3/4 items-center justify-center opacity-20">
+              <div className="relative flex h-full w-full items-center justify-center opacity-20">
                 <Image
                   src={trophy.image}
                   alt="?"
                   fill
+                  unoptimized
                   className="object-contain grayscale blur-[1px]"
                   sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
                 />

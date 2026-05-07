@@ -20,6 +20,7 @@ import Link from "next/link"
 import { PRICING, FOUNDING_TRAINER_TIERS } from "@/lib/pricing"
 import { cn } from "@/lib/utils"
 import Image from "next/image"
+import { TROPHY_MEDIA } from "@/lib/trophy-media"
 
 const freeFeatures = [
   "2 deck slots",
@@ -171,7 +172,7 @@ function BackgroundCard({
 const TIER_META = [
   {
     key: "alpha",
-    image: "/cards/1-alpha-tier-cardb.webp",
+    image: TROPHY_MEDIA.Pikachu1.image,
     accent: {
       name: "Alpha",
       text: "text-amber-300",
@@ -197,7 +198,7 @@ const TIER_META = [
   },
   {
     key: "beta",
-    image: "/cards/2-beta-tier-carda.webp",
+    image: TROPHY_MEDIA.Lugia.image,
     accent: {
       name: "Beta",
       text: "text-slate-200",
@@ -222,7 +223,7 @@ const TIER_META = [
   },
   {
     key: "gamma",
-    image: "/cards/3-gamma-tier-cardb.webp",
+    image: TROPHY_MEDIA.Charizard.image,
     accent: {
       name: "Gamma",
       text: "text-orange-300",
@@ -717,6 +718,15 @@ export default function PricingPage() {
           {/* Annual */}
           <Card className="rounded-2xl border border-white/10 bg-slate-950/30 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05),0_8px_32px_rgba(0,0,0,0.4)] backdrop-blur-lg">
             <CardHeader className="text-center">
+              <div className="relative mx-auto mb-3 aspect-[63/88] w-32 overflow-hidden rounded-lg">
+                <Image
+                  src={TROPHY_MEDIA.Tyranitar.image}
+                  alt="Gym Leader Trophy"
+                  fill
+                  className="object-contain"
+                  sizes="128px"
+                />
+              </div>
               <div className="mb-2 flex items-center justify-center gap-2">
                 <Zap className="h-5 w-5 text-blue-400" />
                 <h2 className="text-xl font-semibold text-slate-100">
@@ -756,6 +766,15 @@ export default function PricingPage() {
           {/* Lifetime */}
           <Card className="rounded-2xl border border-white/10 bg-slate-950/30 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05),0_8px_32px_rgba(0,0,0,0.4)] backdrop-blur-lg">
             <CardHeader className="text-center">
+              <div className="relative mx-auto mb-3 aspect-[63/88] w-32 overflow-hidden rounded-lg">
+                <Image
+                  src={TROPHY_MEDIA.Rayquaza.image}
+                  alt="Champion Trophy"
+                  fill
+                  className="object-contain"
+                  sizes="128px"
+                />
+              </div>
               <div className="mb-2 flex items-center justify-center gap-2">
                 <Crown className="h-5 w-5 text-amber-400" />
                 <h2 className="text-xl font-semibold text-slate-100">

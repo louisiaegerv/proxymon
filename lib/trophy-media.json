@@ -1,0 +1,294 @@
+{
+  "Alakazam": {
+    "image": "/api/images/trophy-cards/images/Alakazam.webp",
+    "video": {
+      "thumbnail": "/api/videos/trophy-cards/videos/Alakazam_360p_svtav1.webm",
+      "detail": "/api/videos/trophy-cards/videos/Alakazam_720p_svtav1.webm"
+    }
+  },
+  "Arcanine": {
+    "image": "/api/images/trophy-cards/images/Arcanine.webp",
+    "video": {
+      "thumbnail": "/api/videos/trophy-cards/videos/Arcanine_360p_svtav1.webm",
+      "detail": "/api/videos/trophy-cards/videos/Arcanine_720p_svtav1.webm"
+    }
+  },
+  "Arceus": {
+    "image": "/api/images/trophy-cards/images/Arceus.webp"
+  },
+  "Arceus2": {
+    "image": "/api/images/trophy-cards/images/Arceus2.webp"
+  },
+  "Blastoise": {
+    "image": "/api/images/trophy-cards/images/Blastoise.webp",
+    "video": {
+      "thumbnail": "/api/videos/trophy-cards/videos/Blastoise_360p_svtav1.webm",
+      "detail": "/api/videos/trophy-cards/videos/Blastoise_720p_svtav1.webm"
+    }
+  },
+  "Blastoise2": {
+    "image": "/api/images/trophy-cards/images/Blastoise2.webp"
+  },
+  "Bulbasaur": {
+    "image": "/api/images/trophy-cards/images/Bulbasaur.webp",
+    "video": {
+      "thumbnail": "/api/videos/trophy-cards/videos/Bulbasaur_360p_svtav1.webm",
+      "detail": "/api/videos/trophy-cards/videos/Bulbasaur_720p_svtav1.webm"
+    }
+  },
+  "Charizard": {
+    "image": "/api/images/trophy-cards/images/Charizard.webp",
+    "video": {
+      "thumbnail": "/api/videos/trophy-cards/videos/Charizard_360p_svtav1.webm",
+      "detail": "/api/videos/trophy-cards/videos/Charizard_720p_svtav1.webm"
+    }
+  },
+  "Charizard2": {
+    "image": "/api/images/trophy-cards/images/Charizard2.webp",
+    "video": {
+      "thumbnail": "/api/videos/trophy-cards/videos/Charizard2_360p_svtav1.webm",
+      "detail": "/api/videos/trophy-cards/videos/Charizard2_720p_svtav1.webm"
+    }
+  },
+  "Charmander": {
+    "image": "/api/images/trophy-cards/images/Charmander.webp",
+    "video": {
+      "thumbnail": "/api/videos/trophy-cards/videos/Charmander_360p_svtav1.webm",
+      "detail": "/api/videos/trophy-cards/videos/Charmander_720p_svtav1.webm"
+    }
+  },
+  "Clefairy": {
+    "image": "/api/images/trophy-cards/images/Clefairy.webp",
+    "video": {
+      "thumbnail": "/api/videos/trophy-cards/videos/Clefairy_360p_svtav1.webm",
+      "detail": "/api/videos/trophy-cards/videos/Clefairy_720p_svtav1.webm"
+    }
+  },
+  "Ditto": {
+    "image": "/api/images/trophy-cards/images/Ditto.webp",
+    "video": {
+      "thumbnail": "/api/videos/trophy-cards/videos/Ditto_360p_svtav1.webm",
+      "detail": "/api/videos/trophy-cards/videos/Ditto_720p_svtav1.webm"
+    }
+  },
+  "Dragonite": {
+    "image": "/api/images/trophy-cards/images/Dragonite.webp",
+    "video": {
+      "thumbnail": "/api/videos/trophy-cards/videos/Dragonite_360p_svtav1.webm",
+      "detail": "/api/videos/trophy-cards/videos/Dragonite_720p_svtav1.webm"
+    }
+  },
+  "Eevee": {
+    "image": "/api/images/trophy-cards/images/Eevee.webp",
+    "video": {
+      "thumbnail": "/api/videos/trophy-cards/videos/Eevee_360p_svtav1.webm",
+      "detail": "/api/videos/trophy-cards/videos/Eevee_720p_svtav1.webm"
+    }
+  },
+  "Entei": {
+    "image": "/api/images/trophy-cards/images/Entei.webp",
+    "video": {
+      "thumbnail": "/api/videos/trophy-cards/videos/Entei_360p_svtav1.webm",
+      "detail": "/api/videos/trophy-cards/videos/Entei_720p_svtav1.webm"
+    }
+  },
+  "Espeon": {
+    "image": "/api/images/trophy-cards/images/Espeon.webp",
+    "video": {
+      "thumbnail": "/api/videos/trophy-cards/videos/Espeon_360p_svtav1.webm",
+      "detail": "/api/videos/trophy-cards/videos/Espeon_720p_svtav1.webm"
+    }
+  },
+  "Flareon": {
+    "image": "/api/images/trophy-cards/images/Flareon.webp",
+    "video": {
+      "thumbnail": "/api/videos/trophy-cards/videos/Flareon_360p_svtav1.webm",
+      "detail": "/api/videos/trophy-cards/videos/Flareon_720p_svtav1.webm"
+    }
+  },
+  "Gengar": {
+    "image": "/api/images/trophy-cards/images/Gengar.webp",
+    "video": {
+      "thumbnail": "/api/videos/trophy-cards/videos/Gengar_360p_svtav1.webm",
+      "detail": "/api/videos/trophy-cards/videos/Gengar_720p_svtav1.webm"
+    }
+  },
+  "Giratina": {
+    "image": "/api/images/trophy-cards/images/Giratina.webp",
+    "video": {
+      "thumbnail": "/api/videos/trophy-cards/videos/Giratina_360p_svtav1.webm",
+      "detail": "/api/videos/trophy-cards/videos/Giratina_720p_svtav1.webm"
+    }
+  },
+  "Groudon": {
+    "image": "/api/images/trophy-cards/images/Groudon.webp",
+    "video": {
+      "thumbnail": "/api/videos/trophy-cards/videos/Groudon_360p_svtav1.webm",
+      "detail": "/api/videos/trophy-cards/videos/Groudon_720p_svtav1.webm"
+    }
+  },
+  "Groudon2": {
+    "image": "/api/images/trophy-cards/images/Groudon2.webp"
+  },
+  "Ho-oh": {
+    "image": "/api/images/trophy-cards/images/Ho-oh.webp"
+  },
+  "Ho-oh2": {
+    "image": "/api/images/trophy-cards/images/Ho-oh2.webp"
+  },
+  "Ho-oh3": {
+    "image": "/api/images/trophy-cards/images/Ho-oh3.webp"
+  },
+  "Ho-Oh4": {
+    "image": "/api/images/trophy-cards/images/Ho-Oh4.webp"
+  },
+  "Jolteon": {
+    "image": "/api/images/trophy-cards/images/Jolteon.webp",
+    "video": {
+      "thumbnail": "/api/videos/trophy-cards/videos/Jolteon_360p_svtav1.webm",
+      "detail": "/api/videos/trophy-cards/videos/Jolteon_720p_svtav1.webm"
+    }
+  },
+  "Kyogre": {
+    "image": "/api/images/trophy-cards/images/Kyogre.webp",
+    "video": {
+      "thumbnail": "/api/videos/trophy-cards/videos/Kyogre_360p_svtav1.webm",
+      "detail": "/api/videos/trophy-cards/videos/Kyogre_720p_svtav1.webm"
+    }
+  },
+  "Lugia": {
+    "image": "/api/images/trophy-cards/images/Lugia.webp",
+    "video": {
+      "thumbnail": "/api/videos/trophy-cards/videos/Lugia_360p_svtav1.webm",
+      "detail": "/api/videos/trophy-cards/videos/Lugia_720p_svtav1.webm"
+    }
+  },
+  "Machamp": {
+    "image": "/api/images/trophy-cards/images/Machamp.webp",
+    "video": {
+      "thumbnail": "/api/videos/trophy-cards/videos/Machamp_360p_svtav1.webm",
+      "detail": "/api/videos/trophy-cards/videos/Machamp_720p_svtav1.webm"
+    }
+  },
+  "Metagross": {
+    "image": "/api/images/trophy-cards/images/Metagross.webp",
+    "video": {
+      "thumbnail": "/api/videos/trophy-cards/videos/Metagross_360p_svtav1.webm",
+      "detail": "/api/videos/trophy-cards/videos/Metagross_720p_svtav1.webm"
+    }
+  },
+  "Mew": {
+    "image": "/api/images/trophy-cards/images/Mew.webp",
+    "video": {
+      "thumbnail": "/api/videos/trophy-cards/videos/Mew_360p_svtav1.webm",
+      "detail": "/api/videos/trophy-cards/videos/Mew_720p_svtav1.webm"
+    }
+  },
+  "Mewtwo": {
+    "image": "/api/images/trophy-cards/images/Mewtwo.webp",
+    "video": {
+      "thumbnail": "/api/videos/trophy-cards/videos/Mewtwo_360p_svtav1.webm",
+      "detail": "/api/videos/trophy-cards/videos/Mewtwo_720p_svtav1.webm"
+    }
+  },
+  "Nidoking": {
+    "image": "/api/images/trophy-cards/images/Nidoking.webp",
+    "video": {
+      "thumbnail": "/api/videos/trophy-cards/videos/Nidoking_360p_svtav1.webm",
+      "detail": "/api/videos/trophy-cards/videos/Nidoking_720p_svtav1.webm"
+    }
+  },
+  "Pikachu1": {
+    "image": "/api/images/trophy-cards/images/Pikachu1.webp",
+    "video": {
+      "thumbnail": "/api/videos/trophy-cards/videos/Pikachu1_360p_svtav1.webm",
+      "detail": "/api/videos/trophy-cards/videos/Pikachu1_720p_svtav1.webm"
+    }
+  },
+  "Pikachu2": {
+    "image": "/api/images/trophy-cards/images/Pikachu2.webp",
+    "video": {
+      "thumbnail": "/api/videos/trophy-cards/videos/Pikachu2_360p_svtav1.webm",
+      "detail": "/api/videos/trophy-cards/videos/Pikachu2_720p_svtav1.webm"
+    }
+  },
+  "Raikou": {
+    "image": "/api/images/trophy-cards/images/Raikou.webp",
+    "video": {
+      "thumbnail": "/api/videos/trophy-cards/videos/Raikou_360p_svtav1.webm",
+      "detail": "/api/videos/trophy-cards/videos/Raikou_720p_svtav1.webm"
+    }
+  },
+  "Rayquaza": {
+    "image": "/api/images/trophy-cards/images/Rayquaza.webp",
+    "video": {
+      "thumbnail": "/api/videos/trophy-cards/videos/Rayquaza_360p_svtav1.webm",
+      "detail": "/api/videos/trophy-cards/videos/Rayquaza_720p_svtav1.webm"
+    }
+  },
+  "Sableye": {
+    "image": "/api/images/trophy-cards/images/Sableye.webp",
+    "video": {
+      "thumbnail": "/api/videos/trophy-cards/videos/Sableye_360p_svtav1.webm",
+      "detail": "/api/videos/trophy-cards/videos/Sableye_720p_svtav1.webm"
+    }
+  },
+  "Snorlax": {
+    "image": "/api/images/trophy-cards/images/Snorlax.webp"
+  },
+  "Squirtle": {
+    "image": "/api/images/trophy-cards/images/Squirtle.webp",
+    "video": {
+      "thumbnail": "/api/videos/trophy-cards/videos/Squirtle_360p_svtav1.webm",
+      "detail": "/api/videos/trophy-cards/videos/Squirtle_720p_svtav1.webm"
+    }
+  },
+  "Starmie": {
+    "image": "/api/images/trophy-cards/images/Starmie.webp",
+    "video": {
+      "thumbnail": "/api/videos/trophy-cards/videos/Starmie_360p_svtav1.webm",
+      "detail": "/api/videos/trophy-cards/videos/Starmie_720p_svtav1.webm"
+    }
+  },
+  "Suicune": {
+    "image": "/api/images/trophy-cards/images/Suicune.webp",
+    "video": {
+      "thumbnail": "/api/videos/trophy-cards/videos/Suicune_360p_svtav1.webm",
+      "detail": "/api/videos/trophy-cards/videos/Suicune_720p_svtav1.webm"
+    }
+  },
+  "Tyranitar": {
+    "image": "/api/images/trophy-cards/images/Tyranitar.webp",
+    "video": {
+      "thumbnail": "/api/videos/trophy-cards/videos/Tyranitar_360p_svtav1.webm",
+      "detail": "/api/videos/trophy-cards/videos/Tyranitar_720p_svtav1.webm"
+    }
+  },
+  "Umbreon": {
+    "image": "/api/images/trophy-cards/images/Umbreon.webp",
+    "video": {
+      "thumbnail": "/api/videos/trophy-cards/videos/Umbreon_360p_svtav1.webm",
+      "detail": "/api/videos/trophy-cards/videos/Umbreon_720p_svtav1.webm"
+    }
+  },
+  "Vaporeon": {
+    "image": "/api/images/trophy-cards/images/Vaporeon.webp",
+    "video": {
+      "thumbnail": "/api/videos/trophy-cards/videos/Vaporeon_360p_svtav1.webm",
+      "detail": "/api/videos/trophy-cards/videos/Vaporeon_720p_svtav1.webm"
+    }
+  },
+  "Venusaur": {
+    "image": "/api/images/trophy-cards/images/Venusaur.webp"
+  },
+  "Zapdos": {
+    "image": "/api/images/trophy-cards/images/Zapdos.webp"
+  },
+  "Zapdos2": {
+    "image": "/api/images/trophy-cards/images/Zapdos2.webp",
+    "video": {
+      "thumbnail": "/api/videos/trophy-cards/videos/Zapdos2_360p_svtav1.webm",
+      "detail": "/api/videos/trophy-cards/videos/Zapdos2_720p_svtav1.webm"
+    }
+  }
+}

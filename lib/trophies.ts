@@ -6,6 +6,8 @@
  * 2. App achievements (deck building, exporting, searching, etc.)
  */
 
+import { TROPHY_MEDIA } from "./trophy-media"
+
 export type TrophyRarity = "common" | "uncommon" | "rare" | "holo" | "legendary"
 export type TrophyCategory = "tier" | "achievement"
 
@@ -21,6 +23,11 @@ export interface TrophyDefinition {
   tier?: string
   // For achievement trophies: how many actions needed
   target?: number
+  // Optional video URLs (thumbnail = 360p, detail = 720p)
+  video?: {
+    thumbnail: string
+    detail: string
+  }
 }
 
 // ============================================================================
@@ -35,9 +42,10 @@ export const TIER_TROPHIES: TrophyDefinition[] = [
       "One of the first 100 believers. A gold commemorative trophy for early supporters.",
     category: "tier",
     rarity: "legendary",
-    image: "/cards/1-alpha-tier-cardb.webp",
+    image: TROPHY_MEDIA.Pikachu1.image,
     condition: "Purchase Founding Trainer Alpha tier",
     tier: "founding_alpha",
+    video: TROPHY_MEDIA.Pikachu1.video,
   },
   {
     id: "founding_beta",
@@ -46,9 +54,10 @@ export const TIER_TROPHIES: TrophyDefinition[] = [
       "One of the first 250 supporters. A silver commemorative trophy.",
     category: "tier",
     rarity: "legendary",
-    image: "/cards/2-beta-tier-carda.webp",
+    image: TROPHY_MEDIA.Lugia.image,
     condition: "Purchase Founding Trainer Beta tier",
     tier: "founding_beta",
+    video: TROPHY_MEDIA.Lugia.video,
   },
   {
     id: "founding_gamma",
@@ -57,9 +66,10 @@ export const TIER_TROPHIES: TrophyDefinition[] = [
       "One of the first 500 supporters. A bronze commemorative trophy.",
     category: "tier",
     rarity: "legendary",
-    image: "/cards/3-gamma-tier-cardb.webp",
+    image: TROPHY_MEDIA.Charizard.image,
     condition: "Purchase Founding Trainer Gamma tier",
     tier: "founding_gamma",
+    video: TROPHY_MEDIA.Charizard.video,
   },
   {
     id: "champion",
@@ -68,9 +78,10 @@ export const TIER_TROPHIES: TrophyDefinition[] = [
       "Lifetime access to Proxidex. A purple-gold trophy for true Champions.",
     category: "tier",
     rarity: "holo",
-    image: "/cards/rayquaza-metal_md.webp",
+    image: TROPHY_MEDIA.Rayquaza.image,
     condition: "Purchase Champion (Lifetime) tier",
     tier: "lifetime",
+    video: TROPHY_MEDIA.Rayquaza.video,
   },
   {
     id: "gym_leader",
@@ -79,9 +90,10 @@ export const TIER_TROPHIES: TrophyDefinition[] = [
       "Annual Season Pass holder. A blue-silver trophy for dedicated Gym Leaders.",
     category: "tier",
     rarity: "holo",
-    image: "/cards/Tyranitar-metal_md.webp",
+    image: TROPHY_MEDIA.Tyranitar.image,
     condition: "Purchase Gym Leader (Annual) tier",
     tier: "annual",
+    video: TROPHY_MEDIA.Tyranitar.video,
   },
 ]
 
@@ -97,9 +109,10 @@ export const ACHIEVEMENT_TROPHIES: TrophyDefinition[] = [
       "Sableye spotted your curiosity. You discovered the Trophy Case and claimed your first jewel.",
     category: "achievement",
     rarity: "uncommon",
-    image: "/cards/trophies/Sableye.webp",
+    image: TROPHY_MEDIA.Sableye.image,
     condition: "Open the Trophy Case for the first time",
     target: 1,
+    video: TROPHY_MEDIA.Sableye.video,
   },
   {
     id: "first_deck",
@@ -107,9 +120,10 @@ export const ACHIEVEMENT_TROPHIES: TrophyDefinition[] = [
     description: "Create your very first deck in Proxidex.",
     category: "achievement",
     rarity: "common",
-    image: "/cards/trophies/Bulbasaur.png",
+    image: TROPHY_MEDIA.Bulbasaur.image,
     condition: "Create 1 deck",
     target: 1,
+    video: TROPHY_MEDIA.Bulbasaur.video,
   },
   {
     id: "deck_collector",
@@ -117,7 +131,7 @@ export const ACHIEVEMENT_TROPHIES: TrophyDefinition[] = [
     description: "Save 5 different decks to your collection.",
     category: "achievement",
     rarity: "uncommon",
-    image: "/cards/trophies/Venusaur.png",
+    image: TROPHY_MEDIA.Venusaur.image,
     condition: "Save 5 decks",
     target: 5,
   },
@@ -127,19 +141,10 @@ export const ACHIEVEMENT_TROPHIES: TrophyDefinition[] = [
     description: "Export your first print-ready HTML file.",
     category: "achievement",
     rarity: "common",
-    image: "/cards/trophies/Blastoise.png",
+    image: TROPHY_MEDIA.Blastoise.image,
     condition: "Export 1 print file",
     target: 1,
-  },
-  {
-    id: "limitless_import",
-    name: "Meta Chaser",
-    description: "Import a deck directly from Limitless TCG.",
-    category: "achievement",
-    rarity: "uncommon",
-    image: "/cards/trophies/Espeon.webp",
-    condition: "Import 1 Limitless TCG deck",
-    target: 1,
+    video: TROPHY_MEDIA.Blastoise.video,
   },
   {
     id: "export_veteran",
@@ -147,19 +152,21 @@ export const ACHIEVEMENT_TROPHIES: TrophyDefinition[] = [
     description: "Export 10 print files. You know your way around the printer.",
     category: "achievement",
     rarity: "rare",
-    image: "/cards/trophies/Groudon.png",
+    image: TROPHY_MEDIA.Groudon.image,
     condition: "Export 10 print files",
     target: 10,
+    video: TROPHY_MEDIA.Groudon.video,
   },
   {
-    id: "search_pro",
-    name: "Search Pro",
-    description: "Search for cards 50 times. You know what you're looking for.",
+    id: "limitless_import",
+    name: "Meta Chaser",
+    description: "Import a deck directly from Limitless TCG.",
     category: "achievement",
     rarity: "uncommon",
-    image: "/cards/trophies/Kyogre.png",
-    condition: "Search 50 times",
-    target: 50,
+    image: TROPHY_MEDIA.Espeon.image,
+    condition: "Import 1 Limitless TCG deck",
+    target: 1,
+    video: TROPHY_MEDIA.Espeon.video,
   },
   {
     id: "meta_chaser",
@@ -167,9 +174,20 @@ export const ACHIEVEMENT_TROPHIES: TrophyDefinition[] = [
     description: "Import 3 different meta decks from Limitless TCG.",
     category: "achievement",
     rarity: "rare",
-    image: "/cards/trophies/Metagross.png",
+    image: TROPHY_MEDIA.Metagross.image,
     condition: "Import 3 meta decks",
     target: 3,
+  },
+  {
+    id: "search_pro",
+    name: "Search Pro",
+    description: "Search for cards 50 times. You know what you're looking for.",
+    category: "achievement",
+    rarity: "uncommon",
+    image: TROPHY_MEDIA.Kyogre.image,
+    condition: "Search 50 times",
+    target: 50,
+    video: TROPHY_MEDIA.Kyogre.video,
   },
   {
     id: "print_master",
@@ -177,9 +195,10 @@ export const ACHIEVEMENT_TROPHIES: TrophyDefinition[] = [
     description: "Use all available print settings at least once.",
     category: "achievement",
     rarity: "rare",
-    image: "/cards/trophies/Mewtwo.png",
+    image: TROPHY_MEDIA.Mewtwo.image,
     condition: "Try all print settings",
     target: 1,
+    video: TROPHY_MEDIA.Mewtwo.video,
   },
   {
     id: "master_collector",
@@ -188,7 +207,7 @@ export const ACHIEVEMENT_TROPHIES: TrophyDefinition[] = [
       "Unlock every other trophy in the collection. The ultimate achievement.",
     category: "achievement",
     rarity: "legendary",
-    image: "/cards/trophies/Arceus2.png",
+    image: TROPHY_MEDIA.Arceus2.image,
     condition: "Unlock all other trophies",
     target: 1,
   },
